@@ -1,0 +1,25 @@
+# Build output
+build/bin/
+frontend/dist/**
+!frontend/dist/.gitkeep
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Go
+*.exe
+*.test
+*.out
+vendor/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Local env
+.env
+.env.*
