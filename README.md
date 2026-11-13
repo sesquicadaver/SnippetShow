@@ -2,7 +2,7 @@
 
 **SnippetShow** — Linux Command Wiki & Script Builder: локальна легковагова десктопна утиліта для індексації CLI-програм, man-прапорців, користувацьких сніпетів і конструктора bash-скриптів.
 
-Канонічне ТЗ: [`TOR_base.md`](TOR_base.md). Рішення старту: [`docs/DECISIONS.md`](docs/DECISIONS.md) (D1–D8). Матриця ТЗ→модуль→тести: [`docs/LIVING_SPEC.md`](docs/LIVING_SPEC.md).
+Канонічне ТЗ: [`TOR_base.md`](TOR_base.md). Рішення старту: [`docs/DECISIONS.md`](docs/DECISIONS.md) (D1–D8). Матриця ТЗ→модуль→тести: [`docs/LIVING_SPEC.md`](docs/LIVING_SPEC.md). NFR: [`docs/NFR_NOTES.md`](docs/NFR_NOTES.md).
 
 ## Стек
 
@@ -23,7 +23,7 @@
 
 ### Залежності webkit2gtk за сімействами
 
-**Debian / Ubuntu**
+**Debian / Ubuntu** — див. також [`build/dist-notes-ubuntu.md`](build/dist-notes-ubuntu.md)
 
 ```bash
 sudo apt update
@@ -34,13 +34,13 @@ sudo apt install build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
 
 На Ubuntu 24.04+ збірка потребує tag `webkit2_41` (див. `build/build.sh`).
 
-**Arch / Manjaro / EndeavourOS**
+**Arch / Manjaro / EndeavourOS** — [`build/dist-notes-arch.md`](build/dist-notes-arch.md)
 
 ```bash
 sudo pacman -S base-devel gtk3 webkit2gtk
 ```
 
-**Fedora / RHEL-подібні**
+**Fedora / RHEL-подібні** — [`build/dist-notes-fedora.md`](build/dist-notes-fedora.md)
 
 ```bash
 sudo dnf install gtk3-devel webkit2gtk4.1-devel
@@ -71,25 +71,32 @@ wails dev
 ./scripts/ci-local.sh
 ```
 
+## JSON backup (фаза 4)
+
+Toolbar: **Експорт JSON** / **Імпорт JSON** — лише `user_snippets` + `custom_scripts` (`version: 1`).
+
+**Merge-політика імпорту:**
+
+- Сніпети: ключ `(programName, title, command)`; дублікати пропускаються.
+- Якщо програми немає — створюється stub (`is_installed=0`); `programs`/`man_commands` не затираються.
+- Скрипти: ключ `(name, scriptBody)`; дублікати пропускаються.
+- Повторний імпорт ідемпотентний для ідентичних записів.
+
 ## Структура
 
 `internal/{app,db,scanner,manparser,index,clipboard,terminal,safety,backup,scriptbuilder}`, `frontend/` (Vanilla), `docs/`, `scripts/ci-local.sh`, `.github/workflows/ci.yml`.
 
-Збірка **лише Linux** (`build/build.sh` + `build/appicon.png`). Каталоги `build/windows` / `build/darwin` навмисно відсутні.
+Збірка **лише Linux** (`build/build.sh` + `build/appicon.png` + dist-notes). Каталоги `build/windows` / `build/darwin` навмисно відсутні.
 
 ## Статус
 
-**Фаза 3** — User Snippets & Actions: CRUD «Мої команди», Copy (X11/Wayland), Run у системному терміналі з confirm для небезпечних конструкцій, «+ Script» → in-memory draft.  
-Script Builder UI / JSON backup — фаза 4.
+**Фаза 4** — Script Builder UI, CRUD `custom_scripts`, JSON backup, dist-notes Ubuntu/Arch/Fedora, NFR notes.
 
-## Wiki + Snippets (фази 2–3)
-
-Після `wails dev` або збірки ELF:
+## Wiki + Builder (фази 2–4)
 
 1. Стартовий `EnsureIndexed` сканує встановлені бінарники.
-2. Toolbar: режими, живий пошук (~180 мс debounce), алфавіт, «Оновити індекс» (подія `index:progress`).
-3. Ліворуч — список Назва | Опис | Статус; у центрі — man або install-команда (D6).
-4. «Мої команди»: додати / змінити / видалити; теги потрапляють у FTS.
-5. Дії біля man-рядків і сніпетів: **Копіювати**, **Запустити**, **+ Script**.
-6. Run: `$TERMINAL` → `x-terminal-emulator` → `gnome-terminal` → `konsole` → `xfce4-terminal` (D7); confirm для `rm -rf` / `dd` / `mkfs` / `sudo`.
-7. «Підвантажити каталог» — sync PM cache для режиму «Всі» (D5).
+2. Toolbar: режими, пошук, алфавіт, «Оновити індекс», каталог, Export/Import JSON.
+3. Ліворуч — список; у центрі — man / install + «Мої команди».
+4. Дії: **Копіювати**, **Запустити**, **+ Script** (і чекбокси man → draft).
+5. Праворуч **Script Builder**: reorder (↑↓ / DnD), bash editor + shebang, Copy / Run / Export `.sh` (+x) / Save у БД.
+6. Run: D7 + confirm для `rm -rf` / `dd` / `mkfs` / `sudo`.

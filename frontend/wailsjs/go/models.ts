@@ -229,6 +229,8 @@ export namespace app {
 	export class ScriptDraftDTO {
 	    lines: string[];
 	    count: number;
+	    body: string;
+	    shebang: string;
 
 	    static createFrom(source: any = {}) {
 	        return new ScriptDraftDTO(source);
@@ -238,6 +240,60 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.lines = source["lines"];
 	        this.count = source["count"];
+	        this.body = source["body"];
+	        this.shebang = source["shebang"];
+	    }
+	}
+	export class CustomScriptDTO {
+	    id: number;
+	    name: string;
+	    scriptBody: string;
+	    updatedAt: string;
+
+	    static createFrom(source: any = {}) {
+	        return new CustomScriptDTO(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.scriptBody = source["scriptBody"];
+	        this.updatedAt = source["updatedAt"];
+	    }
+	}
+	export class CustomScriptInput {
+	    name: string;
+	    scriptBody: string;
+
+	    static createFrom(source: any = {}) {
+	        return new CustomScriptInput(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.scriptBody = source["scriptBody"];
+	    }
+	}
+	export class BackupResultDTO {
+	    snippetsAdded: number;
+	    snippetsSkipped: number;
+	    scriptsAdded: number;
+	    scriptsSkipped: number;
+	    programsCreated: number;
+
+	    static createFrom(source: any = {}) {
+	        return new BackupResultDTO(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.snippetsAdded = source["snippetsAdded"];
+	        this.snippetsSkipped = source["snippetsSkipped"];
+	        this.scriptsAdded = source["scriptsAdded"];
+	        this.scriptsSkipped = source["scriptsSkipped"];
+	        this.programsCreated = source["programsCreated"];
 	    }
 	}
 	export class ProgressEvent {

@@ -29,6 +29,14 @@ type UserSnippet struct {
 	CreatedAt string `json:"createdAt"`
 }
 
+// CustomScript is a saved bash script row (Phase 4 / P4-7).
+type CustomScript struct {
+	ID         int64  `json:"id"`
+	Name       string `json:"name"`
+	ScriptBody string `json:"scriptBody"`
+	UpdatedAt  string `json:"updatedAt"`
+}
+
 // SearchHit is an FTS5 match with the owning program id.
 type SearchHit struct {
 	ProgramID int64   `json:"programId"`

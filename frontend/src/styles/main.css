@@ -17,7 +17,7 @@
   --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", Consolas, monospace;
   --toolbar-h: auto;
   --nav-w: min(360px, 30vw);
-  --builder-w: 220px;
+  --builder-w: min(380px, 32vw);
 }
 
 * { box-sizing: border-box; }
@@ -606,6 +606,158 @@ html, body {
   font-family: var(--font-display);
   font-size: 1.15rem;
   color: var(--ink);
+}
+
+.builder-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  height: 100%;
+  overflow: auto;
+  padding: 0.75rem;
+  background: rgba(26, 34, 26, 0.55);
+  animation: slide-in 220ms ease-out;
+}
+
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+.builder-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.builder-header h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+}
+
+.builder-sub {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.builder-lines h3,
+.builder-editor-wrap h3,
+.builder-saved h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.builder-line-list,
+.saved-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.builder-line {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid var(--line);
+  background: rgba(15, 20, 15, 0.55);
+  cursor: grab;
+}
+
+.builder-line.is-dragging { opacity: 0.55; }
+
+.builder-line code {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  word-break: break-all;
+}
+
+.builder-line-actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.bash-editor {
+  position: relative;
+  min-height: 10rem;
+  border: 1px solid var(--line);
+  background: #0f140f;
+}
+
+.bash-highlight,
+.bash-input {
+  margin: 0;
+  padding: 0.65rem 0.7rem;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  tab-size: 2;
+}
+
+.bash-highlight {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  pointer-events: none;
+  color: var(--ink);
+}
+
+.bash-input {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: 10rem;
+  border: 0;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--accent);
+  resize: vertical;
+  outline: none;
+}
+
+.tok-shebang { color: var(--accent); font-weight: 600; }
+.tok-comment { color: var(--muted); }
+.tok-string { color: #8fbf7a; }
+.tok-kw { color: #d4b56a; }
+
+.builder-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.btn-link {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0.15rem 0;
+  text-align: left;
+}
+
+.btn-link:hover { text-decoration: underline; }
+
+.saved-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid rgba(231, 238, 228, 0.06);
+}
+
+.app-body.builder-collapsed {
+  grid-template-columns: var(--nav-w) minmax(0, 1fr) 7.5rem;
 }
 
 .muted { color: var(--muted); }

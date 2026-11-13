@@ -12,7 +12,7 @@ import (
 )
 
 // App is the Wails-bound application root.
-// Phase 3: User Snippets & Actions.
+// Phase 4: Script Builder, JSON backup, dist polish.
 type App struct {
 	ctx context.Context
 	api *appapi.API
@@ -152,4 +152,137 @@ func (a *App) AddToScript(command string) (appapi.ScriptDraftDTO, error) {
 // ScriptDraft returns the current draft snapshot.
 func (a *App) ScriptDraft() appapi.ScriptDraftDTO {
 	return a.api.ScriptDraft()
+}
+
+// MoveScriptLine reorders a draft line (P4-2).
+func (a *App) MoveScriptLine(index int, direction string) (appapi.ScriptDraftDTO, error) {
+	return a.api.MoveScriptLine(index, direction)
+}
+
+// RemoveScriptLine deletes a draft line.
+func (a *App) RemoveScriptLine(index int) (appapi.ScriptDraftDTO, error) {
+	return a.api.RemoveScriptLine(index)
+}
+
+// ClearScriptDraft empties the draft.
+func (a *App) ClearScriptDraft() appapi.ScriptDraftDTO {
+	return a.api.ClearScriptDraft()
+}
+
+// SetScriptBody replaces the draft from the editor body (P4-3).
+func (a *App) SetScriptBody(body string) appapi.ScriptDraftDTO {
+	return a.api.SetScriptBody(body)
+}
+
+// GenerateScript returns the current script text with shebang.
+func (a *App) GenerateScript() string {
+	return a.api.GenerateScript()
+}
+
+// ExportScriptFile writes a .sh with chmod +x (P4-6).
+func (a *App) ExportScriptFile(path, body string) error {
+	return a.api.ExportScriptFile(path, body)
+}
+
+// ExportScriptDialog opens a save dialog and exports the script (P4-6).
+func (a *App) ExportScriptDialog(body string) (string, error) {
+	if a.ctx == nil {
+		return "", fmt.Errorf("runtime context недоступний")
+	}
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           "Експорт скрипту (.sh)",
+		DefaultFilename: "snippetshow-script.sh",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Shell scripts", Pattern: "*.sh"},
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(path) == "" {
+		return "", nil
+	}
+	if err := a.api.ExportScriptFile(path, body); err != nil {
+		return "", err
+	}
+	return path, nil
+}
+
+// RunScript runs the script body with safety confirm (P4-5).
+func (a *App) RunScript(req appapi.RunRequest) (appapi.RunResponse, error) {
+	return a.api.RunScript(req)
+}
+
+// ListCustomScripts returns saved scripts (P4-7).
+func (a *App) ListCustomScripts() ([]appapi.CustomScriptDTO, error) {
+	return a.api.ListCustomScripts()
+}
+
+// SaveCustomScript creates or updates a DB script (P4-7).
+func (a *App) SaveCustomScript(id int64, in appapi.CustomScriptInput) (*appapi.CustomScriptDTO, error) {
+	return a.api.SaveCustomScript(id, in)
+}
+
+// LoadCustomScript loads a saved script into the draft.
+func (a *App) LoadCustomScript(id int64) (appapi.ScriptDraftDTO, error) {
+	return a.api.LoadCustomScript(id)
+}
+
+// DeleteCustomScript removes a saved script.
+func (a *App) DeleteCustomScript(id int64) error {
+	return a.api.DeleteCustomScript(id)
+}
+
+// ExportBackup writes JSON backup to path (P4-8).
+func (a *App) ExportBackup(path string) error {
+	return a.api.ExportBackup(path)
+}
+
+// ImportBackup merges JSON backup from path (P4-9).
+func (a *App) ImportBackup(path string) (appapi.BackupResultDTO, error) {
+	return a.api.ImportBackup(path)
+}
+
+// ExportBackupDialog opens a save dialog and exports JSON backup (P4-10).
+func (a *App) ExportBackupDialog() (string, error) {
+	if a.ctx == nil {
+		return "", fmt.Errorf("runtime context недоступний")
+	}
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           "Експорт JSON-бекапу",
+		DefaultFilename: "snippetshow-backup.json",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "JSON", Pattern: "*.json"},
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(path) == "" {
+		return "", nil
+	}
+	if err := a.api.ExportBackup(path); err != nil {
+		return "", err
+	}
+	return path, nil
+}
+
+// ImportBackupDialog opens an open dialog and imports JSON backup (P4-10).
+func (a *App) ImportBackupDialog() (appapi.BackupResultDTO, error) {
+	if a.ctx == nil {
+		return appapi.BackupResultDTO{}, fmt.Errorf("runtime context недоступний")
+	}
+	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Імпорт JSON-бекапу",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "JSON", Pattern: "*.json"},
+		},
+	})
+	if err != nil {
+		return appapi.BackupResultDTO{}, err
+	}
+	if strings.TrimSpace(path) == "" {
+		return appapi.BackupResultDTO{}, nil
+	}
+	return a.api.ImportBackup(path)
 }

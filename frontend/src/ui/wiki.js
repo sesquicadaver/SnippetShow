@@ -89,7 +89,7 @@ export function renderWiki(host, state) {
               const line = commandFromFlag(p.name, c.flag);
               return `
               <tr>
-                <td class="col-check"><input type="checkbox" disabled title="${esc(uk.builderPlaceholder)}"/></td>
+                <td class="col-check"><input type="checkbox" data-action="check-script" data-cmd="${esc(line)}" title="${esc(uk.actionScript)}"/></td>
                 <td class="flag"><code>${esc(c.flag)}</code></td>
                 <td>${esc(c.description)}</td>
                 <td class="actions">${actionButtons(line, `man-${c.id}`)}</td>
@@ -248,6 +248,13 @@ function bindWikiEvents(host, state, detail) {
   host.querySelectorAll('[data-action="script"]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const cmd = btn.closest('[data-cmd]')?.getAttribute('data-cmd') || '';
+      state.onAddScript?.(cmd);
+    });
+  });
+  host.querySelectorAll('[data-action="check-script"]').forEach((box) => {
+    box.addEventListener('change', () => {
+      if (!box.checked) return;
+      const cmd = box.getAttribute('data-cmd') || '';
       state.onAddScript?.(cmd);
     });
   });

@@ -22,7 +22,7 @@ func TestInfoDecisions(t *testing.T) {
 	if info.Frontend != "vanilla-js" {
 		t.Fatalf("frontend: got %q", info.Frontend)
 	}
-	if info.Phase != "3" {
+	if info.Phase != "4" {
 		t.Fatalf("phase: got %q", info.Phase)
 	}
 }
@@ -207,6 +207,78 @@ func TestSnippetAPIAndScriptDraft(t *testing.T) {
 	list, err := api.ListSnippets(id)
 	if err != nil || len(list) != 0 {
 		t.Fatalf("%v err=%v", list, err)
+	}
+}
+
+func TestScriptBuilderAndBackupAPI(t *testing.T) {
+	store, err := db.Open(filepath.Join(t.TempDir(), "wiki.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	pid, err := store.UpsertProgram(db.Program{Name: "curl", Summary: "http", IsInstalled: true}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	api := NewWithStore(store)
+	if _, err := api.AddToScript("echo one"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := api.AddToScript("echo two"); err != nil {
+		t.Fatal(err)
+	}
+	draft, err := api.MoveScriptLine(1, "up")
+	if err != nil || draft.Lines[0] != "echo two" {
+		t.Fatalf("%+v err=%v", draft, err)
+	}
+	body := api.GenerateScript()
+	if body == "" || draft.Body == "" {
+		t.Fatal("empty body")
+	}
+	cs, err := api.SaveCustomScript(0, CustomScriptInput{Name: "demo", ScriptBody: body})
+	if err != nil || cs.ID == 0 {
+		t.Fatalf("%+v err=%v", cs, err)
+	}
+	api.ClearScriptDraft()
+	if api.ScriptDraft().Count != 0 {
+		t.Fatal("clear failed")
+	}
+	loaded, err := api.LoadCustomScript(cs.ID)
+	if err != nil || loaded.Count == 0 {
+		t.Fatalf("%+v err=%v", loaded, err)
+	}
+	scripts, err := api.ListCustomScripts()
+	if err != nil || len(scripts) != 1 {
+		t.Fatalf("%v err=%v", scripts, err)
+	}
+	shPath := filepath.Join(t.TempDir(), "out.sh")
+	if err := api.ExportScriptFile(shPath, ""); err != nil {
+		t.Fatal(err)
+	}
+	_, err = api.CreateSnippet(SnippetInput{ProgramID: pid, Title: "get", Command: "curl -I https://example.com"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bak := filepath.Join(t.TempDir(), "bak.json")
+	if err := api.ExportBackup(bak); err != nil {
+		t.Fatal(err)
+	}
+	res, err := api.ImportBackup(bak)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.SnippetsSkipped < 1 || res.ScriptsSkipped < 1 {
+		t.Fatalf("expected skip on re-import: %+v", res)
+	}
+	run, err := api.RunScript(RunRequest{Command: "sudo true", Confirmed: false})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !run.NeedsConfirm {
+		t.Fatalf("%+v", run)
+	}
+	if err := api.DeleteCustomScript(cs.ID); err != nil {
+		t.Fatal(err)
 	}
 }
 

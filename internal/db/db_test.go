@@ -292,3 +292,33 @@ func TestSnippetCRUDAndValidation(t *testing.T) {
 		t.Fatalf("after delete list=%v err=%v", list, err)
 	}
 }
+
+func TestCustomScriptsCRUD(t *testing.T) {
+	s := openTemp(t)
+	cs, err := s.CreateCustomScript("demo", "#!/usr/bin/env bash\necho hi\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cs.ID == 0 || cs.UpdatedAt == "" {
+		t.Fatalf("%+v", cs)
+	}
+	got, err := s.GetCustomScript(cs.ID)
+	if err != nil || got.Name != "demo" {
+		t.Fatalf("%+v err=%v", got, err)
+	}
+	upd, err := s.UpdateCustomScript(cs.ID, "demo2", "#!/usr/bin/env bash\necho bye\n")
+	if err != nil || upd.Name != "demo2" {
+		t.Fatalf("%+v err=%v", upd, err)
+	}
+	all, err := s.ListCustomScripts()
+	if err != nil || len(all) != 1 {
+		t.Fatalf("%v err=%v", all, err)
+	}
+	if err := s.DeleteCustomScript(cs.ID); err != nil {
+		t.Fatal(err)
+	}
+	all, err = s.ListCustomScripts()
+	if err != nil || len(all) != 0 {
+		t.Fatalf("after delete %v err=%v", all, err)
+	}
+}

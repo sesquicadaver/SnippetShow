@@ -14,12 +14,20 @@ export function AppInfo() {
   return window['go']['main']['App']['AppInfo']();
 }
 
+export function ClearScriptDraft() {
+  return window['go']['main']['App']['ClearScriptDraft']();
+}
+
 export function CopyText(arg1) {
   return window['go']['main']['App']['CopyText'](arg1);
 }
 
 export function CreateSnippet(arg1) {
   return window['go']['main']['App']['CreateSnippet'](arg1);
+}
+
+export function DeleteCustomScript(arg1) {
+  return window['go']['main']['App']['DeleteCustomScript'](arg1);
 }
 
 export function DeleteSnippet(arg1) {
@@ -34,6 +42,26 @@ export function EnsureIndexed() {
   return window['go']['main']['App']['EnsureIndexed']();
 }
 
+export function ExportBackup(arg1) {
+  return window['go']['main']['App']['ExportBackup'](arg1);
+}
+
+export function ExportBackupDialog() {
+  return window['go']['main']['App']['ExportBackupDialog']();
+}
+
+export function ExportScriptDialog(arg1) {
+  return window['go']['main']['App']['ExportScriptDialog'](arg1);
+}
+
+export function ExportScriptFile(arg1, arg2) {
+  return window['go']['main']['App']['ExportScriptFile'](arg1, arg2);
+}
+
+export function GenerateScript() {
+  return window['go']['main']['App']['GenerateScript']();
+}
+
 export function GetProgram(arg1, arg2) {
   return window['go']['main']['App']['GetProgram'](arg1, arg2);
 }
@@ -42,8 +70,20 @@ export function GetRawMan(arg1) {
   return window['go']['main']['App']['GetRawMan'](arg1);
 }
 
+export function ImportBackup(arg1) {
+  return window['go']['main']['App']['ImportBackup'](arg1);
+}
+
+export function ImportBackupDialog() {
+  return window['go']['main']['App']['ImportBackupDialog']();
+}
+
 export function InstallCommandFor(arg1) {
   return window['go']['main']['App']['InstallCommandFor'](arg1);
+}
+
+export function ListCustomScripts() {
+  return window['go']['main']['App']['ListCustomScripts']();
 }
 
 export function ListInstalled() {
@@ -58,12 +98,32 @@ export function ListSnippets(arg1) {
   return window['go']['main']['App']['ListSnippets'](arg1);
 }
 
+export function LoadCustomScript(arg1) {
+  return window['go']['main']['App']['LoadCustomScript'](arg1);
+}
+
+export function MoveScriptLine(arg1, arg2) {
+  return window['go']['main']['App']['MoveScriptLine'](arg1, arg2);
+}
+
 export function PhaseStatus() {
   return window['go']['main']['App']['PhaseStatus']();
 }
 
+export function RemoveScriptLine(arg1) {
+  return window['go']['main']['App']['RemoveScriptLine'](arg1);
+}
+
 export function RunCommand(arg1) {
   return window['go']['main']['App']['RunCommand'](arg1);
+}
+
+export function RunScript(arg1) {
+  return window['go']['main']['App']['RunScript'](arg1);
+}
+
+export function SaveCustomScript(arg1, arg2) {
+  return window['go']['main']['App']['SaveCustomScript'](arg1, arg2);
 }
 
 export function ScanInstalled() {
@@ -80,6 +140,10 @@ export function Search(arg1) {
 
 export function SearchPrograms(arg1) {
   return window['go']['main']['App']['SearchPrograms'](arg1);
+}
+
+export function SetScriptBody(arg1) {
+  return window['go']['main']['App']['SetScriptBody'](arg1);
 }
 
 export function SyncRepoCatalog() {

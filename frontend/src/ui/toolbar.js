@@ -17,6 +17,8 @@ const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
  *   onQuery: (query:string)=>void,
  *   onUpdate: ()=>void,
  *   onSyncCatalog: ()=>void,
+ *   onExportBackup: ()=>void,
+ *   onImportBackup: ()=>void,
  * }} state
  */
 export function renderToolbar(host, state) {
@@ -52,6 +54,12 @@ export function renderToolbar(host, state) {
         <button type="button" class="btn" data-action="catalog" ${state.busy ? 'disabled' : ''} title="${esc(uk.modeAll)}">
           ${esc(uk.syncCatalog)}
         </button>
+        <button type="button" class="btn" data-action="export-backup" ${state.busy ? 'disabled' : ''} title="${esc(uk.exportBackup)}">
+          ${esc(uk.exportBackup)}
+        </button>
+        <button type="button" class="btn" data-action="import-backup" ${state.busy ? 'disabled' : ''} title="${esc(uk.importBackup)}">
+          ${esc(uk.importBackup)}
+        </button>
       </div>
       <div class="toolbar-status" aria-live="polite">
         <div class="progress-track" ${state.busy ? '' : 'hidden'}>
@@ -76,6 +84,8 @@ export function renderToolbar(host, state) {
   search.addEventListener('input', () => state.onQuery(search.value));
   host.querySelector('[data-action="update"]').addEventListener('click', () => state.onUpdate());
   host.querySelector('[data-action="catalog"]').addEventListener('click', () => state.onSyncCatalog());
+  host.querySelector('[data-action="export-backup"]')?.addEventListener('click', () => state.onExportBackup?.());
+  host.querySelector('[data-action="import-backup"]')?.addEventListener('click', () => state.onImportBackup?.());
   host.querySelectorAll('[data-letter]').forEach((btn) => {
     btn.addEventListener('click', () => state.onLetter(btn.getAttribute('data-letter')));
   });
