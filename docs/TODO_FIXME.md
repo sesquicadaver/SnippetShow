@@ -35,14 +35,25 @@
 | STUB-09 | `internal/scriptbuilder` | reorder / Generate / WriteExecutable / ApplyBody | done |
 | STUB-13 | `frontend` Script Builder | права панель, editor, save/export/run, DnD | done |
 
+## Hotfix (після code review)
+
+| ID | Опис | Статус |
+|----|------|--------|
+| H2 | Safety bypass path-prefix / `env` wrappers (`/usr/bin/sudo`, `/bin/rm -rf`, …) | **done** — command-word + wrap/path у `internal/safety` |
+| H1 | `ParseOnUpdate` не вмикається → немає reparse man при зміні версії | **done** — `index.New` вмикає прапор; FirstRun без mass parse |
+| M1 | `ParseMany` pool не підключений в index | **done** — `parseMany` у UpdateIndex |
+| H3 | Script Builder стирає порожні рядки на commit | **done** — `ApplyBody` vs dense `SetLines`; L7 inner `#!` kept |
+| H4 | Catalog sync: per-package upsert + FTS → зависання | **done** — `UpsertCatalogProgramsBatch` (chunk 500, deferred FTS) |
+
 ## Відомі обмеження Core / Wiki / Builder
 
 | ID | Опис | Нотатка |
 |----|------|---------|
 | CORE-01 | Man regex покриває типові OPTIONS/FLAGS; складні man — через Raw Man | ітеративно покращувати corpus |
+| SAFE-01 | Safety не парсить shell AST; обгортки поза `env/command/nice/nohup` і `$CMD` — відоме обмеження | ROADMAP backlog |
 | CORE-02 | Repo catalog apt/pacman/dnf — soft-fail при порожньому кеші (D5) | OK; UI показує hint |
 | CORE-03 | PM metadata lookup може не знайти пакет для `/usr/local` бінарників | summary з whatis / порожній package |
-| UI-01 | Повний sync apt-каталогу може бути довгим на великих дзеркалах | progress + окрема кнопка «Підвантажити каталог» |
+| UI-01 | Повний sync apt-каталогу може бути довгим на дуже великих дзеркалах | progress + batch FTS (H4); див. `NFR_NOTES` catalog |
 | UI-02 | Copy залежить від Wails clipboard або наявності wl-copy/xclip/xsel | toast з помилкою якщо жоден шлях недоступний |
 | UI-03 | Run потребує встановленого терміналу з D7 | діалог/toast при ErrNotFound |
 | UI-04 | Bash highlight у Builder — мінімальний (shebang/comments/strings/keywords) | без важкої editor-lib (NFR RAM) |

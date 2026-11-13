@@ -23,6 +23,7 @@ func NewDraft() *Draft {
 }
 
 // Add appends a non-empty command line (P3-11 / P4-1).
+// Empty lines are ignored — Wiki «+ Script» is a command append, not a freeform editor.
 func (d *Draft) Add(line string) {
 	line = strings.TrimSpace(line)
 	if line == "" || d == nil {
@@ -65,7 +66,8 @@ func (d *Draft) Clear() {
 	d.Lines = nil
 }
 
-// SetLines replaces the draft with a copy of lines (empty entries skipped).
+// SetLines replaces the draft with a dense command list (empty / shebang entries skipped).
+// Use for list-ops from Wiki checkboxes; freeform editor bodies must use ApplyBody (H3).
 func (d *Draft) SetLines(lines []string) {
 	if d == nil {
 		return
@@ -124,13 +126,33 @@ func (d *Draft) Remove(i int) error {
 	return nil
 }
 
-// ApplyBody parses an editor body into draft lines (shebang / blank lines skipped).
+// ApplyBody replaces the draft from a freeform editor body (P4-3 / H3).
+// Blank lines are preserved. Only a leading shebang line is stripped; inner "#!…"
+// lines stay so editor round-trips do not destroy script structure (L7).
 func (d *Draft) ApplyBody(body string) {
 	if d == nil {
 		return
 	}
-	raw := strings.Split(strings.ReplaceAll(body, "\r\n", "\n"), "\n")
-	d.SetLines(raw)
+	body = strings.ReplaceAll(body, "\r\n", "\n")
+	raw := strings.Split(body, "\n")
+	start := 0
+	if len(raw) > 0 {
+		first := strings.TrimSpace(raw[0])
+		if first == Shebang || strings.HasPrefix(first, "#!") {
+			start = 1
+		}
+	}
+	end := len(raw)
+	// Split leaves a trailing empty element when the body ends with "\n".
+	if end > start && raw[end-1] == "" {
+		end--
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.Lines = make([]string, 0, end-start)
+	for i := start; i < end; i++ {
+		d.Lines = append(d.Lines, raw[i])
+	}
 }
 
 // Generate produces a bash script body with shebang always as the first line (P4-3).
@@ -151,6 +173,7 @@ func (d *Draft) Generate() string {
 }
 
 // EnsureShebang returns body with Shebang forced as the first line.
+// Only the leading shebang is replaced; later "#!" lines are kept (L7).
 func EnsureShebang(body string) string {
 	body = strings.ReplaceAll(body, "\r\n", "\n")
 	lines := strings.Split(body, "\n")

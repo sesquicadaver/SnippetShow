@@ -39,12 +39,14 @@ type Updater struct {
 }
 
 // New builds an Updater with default OS-backed scanner/parser.
+// ParseOnUpdate is enabled so «Оновити індекс» reparses man on version change (H1 / ТЗ §2.3).
 func New(store *db.Store) *Updater {
 	return &Updater{
-		Store:   store,
-		Scanner: scanner.New(),
-		Parser:  manparser.New(),
-		Workers: 4,
+		Store:         store,
+		Scanner:       scanner.New(),
+		Parser:        manparser.New(),
+		ParseOnUpdate: true,
+		Workers:       4,
 	}
 }
 
@@ -135,33 +137,71 @@ func (u *Updater) syncInstalled(ctx context.Context, parseChanged bool, progress
 	res.MarkedGone = int(n)
 
 	if parseChanged && len(toParse) > 0 {
-		send(Progress{Phase: "parse", Total: len(toParse), Message: "Парсинг man"})
-		for i, name := range toParse {
-			if err := u.ParseProgram(ctx, name); err != nil {
-				// Soft-fail individual man pages.
-				send(Progress{Phase: "parse", Done: i + 1, Total: len(toParse), Message: name + ": " + err.Error()})
-				continue
-			}
-			res.Parsed++
-			send(Progress{Phase: "parse", Done: i + 1, Total: len(toParse), Message: name})
+		parsed, err := u.parseMany(ctx, toParse, send)
+		res.Parsed = parsed
+		if err != nil {
+			return res, err
 		}
 	}
 	send(Progress{Phase: "done", Message: fmt.Sprintf("Оновлено %d пакетів", res.Added+res.Updated+res.MarkedGone)})
 	return res, nil
 }
 
+// parseMany parses man pages via the worker pool (M1 / ТЗ §2.2) and persists results.
+func (u *Updater) parseMany(ctx context.Context, names []string, send func(Progress)) (int, error) {
+	send(Progress{Phase: "parse", Total: len(names), Message: "Парсинг man"})
+	workers := u.Workers
+	if workers < 1 {
+		workers = 4
+	}
+	manProg := make(chan manparser.Progress, len(names))
+	bridgeDone := make(chan struct{})
+	go func() {
+		defer close(bridgeDone)
+		for pr := range manProg {
+			msg := pr.Command
+			if pr.Err != nil {
+				msg = pr.Command + ": " + pr.Err.Error()
+			}
+			send(Progress{Phase: "parse", Done: pr.Done, Total: pr.Total, Message: msg})
+		}
+	}()
+	results := u.Parser.ParseMany(ctx, names, workers, manProg)
+	close(manProg)
+	<-bridgeDone
+
+	parsed := 0
+	for _, pr := range results {
+		if pr.Err != nil {
+			continue
+		}
+		if err := u.applyParsedOptions(ctx, pr.Command, pr.Options); err != nil {
+			// Soft-fail individual man pages (same policy as sequential ParseProgram).
+			send(Progress{Phase: "parse", Done: pr.Done, Total: pr.Total, Message: pr.Command + ": " + err.Error()})
+			continue
+		}
+		parsed++
+	}
+	return parsed, nil
+}
+
 // ParseProgram parses man on-demand and stores man_commands (P1-14).
 func (u *Updater) ParseProgram(ctx context.Context, name string) error {
+	opts, err := u.Parser.ParseOptions(ctx, name)
+	if err != nil {
+		return err
+	}
+	return u.applyParsedOptions(ctx, name, opts)
+}
+
+// applyParsedOptions writes parsed flags into the store for an installed program.
+func (u *Updater) applyParsedOptions(ctx context.Context, name string, opts []manparser.Option) error {
 	p, err := u.Store.GetProgramByName(name)
 	if err != nil {
 		return err
 	}
 	if !p.IsInstalled {
 		return fmt.Errorf("index: man parse skipped for uninstalled %q (D6)", name)
-	}
-	opts, err := u.Parser.ParseOptions(ctx, name)
-	if err != nil {
-		return err
 	}
 	cmds := make([]db.ManCommand, 0, len(opts))
 	for _, o := range opts {
@@ -196,13 +236,14 @@ func (u *Updater) EnsureIndexed(ctx context.Context) (UpdateResult, error) {
 
 // CatalogSyncResult summarises a repo-catalog sync into programs (Phase 2 / D5).
 type CatalogSyncResult struct {
-	Added  int                   `json:"added"`
-	Status scanner.CacheStatus   `json:"status"`
-	Hint   string                `json:"hint"`
-	Total  int                   `json:"total"`
+	Added  int                 `json:"added"`
+	Status scanner.CacheStatus `json:"status"`
+	Hint   string              `json:"hint"`
+	Total  int                 `json:"total"`
 }
 
 // SyncRepoCatalog upserts distribution packages as programs without demoting installed rows.
+// Writes go through transactional batch upsert with deferred FTS (H4).
 func (u *Updater) SyncRepoCatalog(ctx context.Context, progress chan<- Progress) (CatalogSyncResult, error) {
 	if u.Store == nil {
 		return CatalogSyncResult{}, fmt.Errorf("index: nil store")
@@ -226,25 +267,30 @@ func (u *Updater) SyncRepoCatalog(ctx context.Context, progress chan<- Progress)
 		send(Progress{Phase: "catalog", Message: cat.Hint})
 		return out, nil
 	}
-	for i, pkg := range cat.Packages {
+	entries := make([]db.CatalogEntry, 0, len(cat.Packages))
+	for _, pkg := range cat.Packages {
 		select {
 		case <-ctx.Done():
 			return out, ctx.Err()
 		default:
 		}
-		before, _ := u.Store.GetProgramByName(pkg.Name)
-		id, err := u.Store.UpsertCatalogProgram(pkg.Name, pkg.Name, pkg.Summary)
-		if err != nil {
-			return out, err
-		}
-		_ = id
-		if before == nil {
-			out.Added++
-		}
-		if i%250 == 0 || i+1 == len(cat.Packages) {
-			send(Progress{Phase: "catalog", Done: i + 1, Total: len(cat.Packages), Message: pkg.Name})
-		}
+		entries = append(entries, db.CatalogEntry{
+			Name:        pkg.Name,
+			PackageName: pkg.Name,
+			Summary:     pkg.Summary,
+		})
 	}
+	added, err := u.Store.UpsertCatalogProgramsBatch(entries, db.DefaultCatalogChunkSize, func(done, total int) {
+		msg := ""
+		if done > 0 && done <= len(cat.Packages) {
+			msg = cat.Packages[done-1].Name
+		}
+		send(Progress{Phase: "catalog", Done: done, Total: total, Message: msg})
+	})
+	if err != nil {
+		return out, err
+	}
+	out.Added = added
 	send(Progress{Phase: "done", Message: fmt.Sprintf("Каталог: додано %d пакетів", out.Added)})
 	return out, nil
 }

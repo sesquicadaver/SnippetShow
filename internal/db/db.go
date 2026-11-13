@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 
 	_ "modernc.org/sqlite"
 )
@@ -21,6 +22,10 @@ const SchemaVersion = 1
 type Store struct {
 	db   *sql.DB
 	path string
+	// FTSSyncCount counts syncFTS invocations (H4 tests / diagnostics).
+	FTSSyncCount atomic.Int64
+	// catalogBatchWriting is set while catalog chunk rows are inserted (H4 invariant).
+	catalogBatchWriting atomic.Bool
 }
 
 // Open opens (or creates) the wiki database at path, creating parent dirs and

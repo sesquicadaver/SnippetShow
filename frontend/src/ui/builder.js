@@ -91,6 +91,7 @@ function bindBuilderEvents(host, state) {
       hl.scrollLeft = ta.scrollLeft;
     }
   });
+  // Body is source of truth on blur: backend ApplyBody keeps blank lines (H3).
   ta?.addEventListener('blur', () => {
     state.onEditorCommit?.(ta.value);
   });

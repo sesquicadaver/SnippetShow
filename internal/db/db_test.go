@@ -322,3 +322,72 @@ func TestCustomScriptsCRUD(t *testing.T) {
 		t.Fatalf("after delete %v err=%v", all, err)
 	}
 }
+
+func TestUpsertCatalogProgramsBatchFTS(t *testing.T) {
+	s := openTemp(t)
+	// Installed row must not be demoted by catalog upsert.
+	_, err := s.UpsertProgram(Program{Name: "pkg0005", Summary: "installed", Version: "1", IsInstalled: true}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseFTS := s.FTSSyncCount.Load()
+
+	const n = 1200
+	entries := make([]CatalogEntry, 0, n)
+	for i := 0; i < n; i++ {
+		name := "pkg" + pad4(i)
+		entries = append(entries, CatalogEntry{Name: name, PackageName: name, Summary: "sum-" + name})
+	}
+	chunks := 0
+	added, err := s.UpsertCatalogProgramsBatch(entries, 500, func(done, total int) {
+		chunks++
+		if done%500 != 0 && done != total {
+			t.Fatalf("unexpected progress done=%d total=%d", done, total)
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// pkg0005 already existed → 1199 new.
+	if added != n-1 {
+		t.Fatalf("added=%d want %d", added, n-1)
+	}
+	if chunks != 3 {
+		t.Fatalf("chunks=%d want 3", chunks)
+	}
+	ftsDelta := s.FTSSyncCount.Load() - baseFTS
+	// Touched = all new + summary fill skipped for installed (already had summary).
+	// Installed pkg0005 unchanged → no extra FTS; 1199 new rows synced after chunks.
+	if ftsDelta != int64(n-1) {
+		t.Fatalf("FTS syncs=%d want %d (deferred per touched, not interleaved mid-write)", ftsDelta, n-1)
+	}
+	for _, q := range []string{"pkg0000", "pkg0500", "pkg1199"} {
+		hits, err := s.Search(q)
+		if err != nil || len(hits) == 0 {
+			t.Fatalf("search %q: %+v err=%v", q, hits, err)
+		}
+	}
+	p, err := s.GetProgramByName("pkg0005")
+	if err != nil || !p.IsInstalled || p.Summary != "installed" {
+		t.Fatalf("installed retention: %+v err=%v", p, err)
+	}
+}
+
+func pad4(i int) string {
+	s := "0000" + itoa(i)
+	return s[len(s)-4:]
+}
+
+func itoa(i int) string {
+	if i == 0 {
+		return "0"
+	}
+	var b [12]byte
+	pos := len(b)
+	for i > 0 {
+		pos--
+		b[pos] = byte('0' + i%10)
+		i /= 10
+	}
+	return string(b[pos:])
+}
