@@ -37,6 +37,6 @@
 - `SyncRepoCatalog` пише пакети чанками по `DefaultCatalogChunkSize` (500) у транзакції.
 - FTS оновлюється лише після commit чанка (не на кожен `Upsert` mid-write).
 - `cache_empty` (D5) без змін поведінки.
-- На дуже великих apt-кешах (десятки тисяч імен) операція все ще може тривати секунди–десятки секунд; UI показує `index:progress` phase `catalog` до `done`. Cancel — окремо (M3, поза hotfix).
+- На дуже великих apt-кешах (десятки тисяч імен) операція все ще може тривати секунди–десятки секунд; UI показує `index:progress` phase `catalog` до `done`. Cancel — `CancelIndex` / кнопка «Скасувати» (M3).
 
 Подальші оптимізації RSS — post-MVP (`docs/ROADMAP_FIXES.md`).

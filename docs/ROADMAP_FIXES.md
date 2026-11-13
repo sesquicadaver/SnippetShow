@@ -2,9 +2,9 @@
 
 Канонічна черга після MVP. Поки MVP не завершено — пункти нижче не блокують Phase 0–4, якщо не позначені як OPEN для Autopilot.
 
-## OPEN (hotfix queue)
+## OPEN
 
-_(порожньо — H2/H1/M1/H3/H4 закриті в hotfix-черзі)_
+_(порожньо — hotfix H2–H4 і medium M2/M3/M4/M5/L1 закриті)_
 
 ## DONE (hotfix)
 
@@ -15,6 +15,16 @@ _(порожньо — H2/H1/M1/H3/H4 закриті в hotfix-черзі)_
 | FIX-M1 | `ParseMany` pool у index UpdateIndex | Workers 4–8; progress phase `parse` |
 | FIX-H3 | Script Builder blank lines / editor fidelity | `ApplyBody` зберігає blanks; strip лише leading shebang |
 | FIX-H4 | Catalog batch upsert / deferred FTS | chunks 500; FTS після commit; D5 без змін |
+
+## DONE (medium cycle)
+
+| ID | Тема | Нотатка |
+|----|------|---------|
+| FIX-M5 | `RunScript` temp scrub | immediate cleanup on error; grace + stale glob |
+| FIX-M2 | `GetProgram` parse warning | `parseWarning` у `ProgramDetail` + UI toast |
+| FIX-M3 | Cancel UpdateIndex / catalog | `CancelIndex` + toolbar «Скасувати» |
+| FIX-M4 | FTS ListPrograms без N+1 | `SearchHit` несе колонки programs |
+| FIX-L1 | Wiki uncheck → remove from draft | `RemoveFromScript` / `RemoveCommand` |
 
 ## Backlog (після v0.1)
 

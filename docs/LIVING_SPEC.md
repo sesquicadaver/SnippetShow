@@ -10,9 +10,9 @@
 | §2.2 | Man Parser (whatis, raw, OPTIONS regex, pool 4–8 у UpdateIndex) | `internal/manparser`, `internal/index` | `manparser_test.go`, `index_test.go` (ParseMany) | done |
 | §2.3 | Incremental «Оновити індекс» + reparse man при зміні версії | `internal/index` (`ParseOnUpdate`) | `index_test.go` | done |
 | §3 | SQLite schema + FTS5 path | `internal/db` | `db_test.go` | done |
-| §2.3 / P1-16 | App API: ScanInstalled, UpdateIndex, GetProgram, Search | `internal/app`, `app.go` | `api_test.go` | done |
-| §4.1–4.2 / P2 | Toolbar + лівий навігатор (режими, FTS, A–Z, оновлення) | `frontend/src/ui/{toolbar,navigator,shell}.js`, `ListPrograms` | `api_test.go` (фільтри), UI smoke | done |
-| §4.3 / P2–P3 | Center Wiki man + Raw Man + install hint + «Мої команди» CRUD | `frontend/src/ui/wiki.js`, `GetProgram`, snippets API | `api_test.go`, `db_test.go` | done |
+| §2.3 / P1-16 | App API: ScanInstalled, UpdateIndex(+cancel), GetProgram(+parseWarning), Search | `internal/app`, `app.go` | `api_test.go` | done |
+| §4.1–4.2 / P2 | Toolbar + навігатор (режими, FTS без N+1, A–Z, update/cancel) | `frontend/src/ui/{toolbar,navigator,shell}.js`, `ListPrograms` | `api_test.go` (фільтри/FTS columns), UI smoke | done |
+| §4.3 / P2–P3 | Center Wiki man + Raw Man + install hint + checkbox↔draft + CRUD | `frontend/src/ui/wiki.js`, `GetProgram`, snippets API | `api_test.go`, `db_test.go` | done |
 | §4.3 | Clipboard X11/Wayland (+ Wails) | `internal/clipboard`, `App.CopyText` | `clipboard_test.go` | done |
 | §4.3 / §5 | Terminal Run + safety confirm (command-word + path/`env` wrappers) | `internal/terminal`, `internal/safety`, `App.RunCommand` | `terminal_test.go`, `safety_test.go`, `api_test.go` | done |
 | §4.3 P3-11 / §4.4 | + Script → draft + Script Builder UI (reorder, editor blanks round-trip, export, save) | `internal/scriptbuilder`, `frontend/src/ui/builder.js` | `scriptbuilder_test.go`, `api_test.go` | done |
@@ -30,16 +30,17 @@
 | `AppInfo` / `PhaseStatus` | бренд / маркер фази |
 | `EnsureIndexed` | first-run scan якщо БД порожня |
 | `UpdateIndex` | інкрементальне оновлення + подія `index:progress` |
+| `CancelIndex` / `IndexBusy` | скасування довгого UpdateIndex / SyncRepoCatalog (M3) |
 | `SyncRepoCatalog` | каталог репо → `programs` (режим «Всі», D5) |
-| `ListPrograms(ListQuery)` | режим / літера / FTS → список навігатора |
+| `ListPrograms(ListQuery)` | режим / літера / FTS → список навігатора (без N+1) |
 | `Search` / `SearchPrograms` | FTS5 |
-| `GetProgram(name, parseMan)` | деталі + lazy man + snippets + install-команда |
+| `GetProgram(name, parseMan)` | деталі + lazy man + `parseWarning` + snippets + install-команда |
 | `GetRawMan(name)` | сирий man (лише встановлені, D6) |
 | `DetectPackageManager` / `InstallCommandFor` | підказки встановлення |
 | `ListSnippets` / `CreateSnippet` / `UpdateSnippet` / `DeleteSnippet` | CRUD «Мої команди» |
 | `CopyText` | буфер обміну (Wails → wl-copy/xclip/xsel) |
 | `AnalyzeCommand` / `RunCommand` | safety + запуск у терміналі (D7) |
-| `AddToScript` / `ScriptDraft` / `MoveScriptLine` / `RemoveScriptLine` / `ClearScriptDraft` / `SetScriptBody` / `GenerateScript` | in-memory Script Builder |
-| `ExportScriptFile` / `ExportScriptDialog` / `RunScript` | експорт `.sh` (+x) і Run скрипту |
+| `AddToScript` / `RemoveFromScript` / `ScriptDraft` / `MoveScriptLine` / `RemoveScriptLine` / `ClearScriptDraft` / `SetScriptBody` / `GenerateScript` | in-memory Script Builder |
+| `ExportScriptFile` / `ExportScriptDialog` / `RunScript` | експорт `.sh` (+x) і Run скрипту (temp scrub M5) |
 | `ListCustomScripts` / `SaveCustomScript` / `LoadCustomScript` / `DeleteCustomScript` | CRUD `custom_scripts` |
 | `ExportBackup` / `ImportBackup` / `ExportBackupDialog` / `ImportBackupDialog` | JSON backup `version: 1` |

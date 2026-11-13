@@ -53,6 +53,7 @@ export function renderWiki(host, state) {
   }
 
   const filter = (state.flagFilter || '').trim().toLowerCase();
+  const draftSet = new Set((state.draftLines || []).map((l) => String(l).trim()).filter(Boolean));
   const cmds = (detail.commands || []).filter((c) => {
     if (!filter) return true;
     return `${c.flag} ${c.description}`.toLowerCase().includes(filter);
@@ -71,6 +72,7 @@ export function renderWiki(host, state) {
           <button type="button" class="btn" data-action="raw">${esc(uk.rawMan)}</button>
         </div>
       </header>
+      ${detail.parseWarning ? `<p class="form-error" role="status">${esc(fmt(uk.statusParseWarning, { msg: detail.parseWarning }))}</p>` : ''}
       <h3 class="wiki-section-title">${esc(uk.wikiTitle)}</h3>
       <div class="man-table-wrap">
         <table class="man-table">
@@ -87,9 +89,10 @@ export function renderWiki(host, state) {
               <tr><td colspan="4" class="muted">${esc(uk.wikiNoFlags)}</td></tr>
             ` : cmds.map((c) => {
               const line = commandFromFlag(p.name, c.flag);
+              const checked = draftSet.has(line) ? 'checked' : '';
               return `
               <tr>
-                <td class="col-check"><input type="checkbox" data-action="check-script" data-cmd="${esc(line)}" title="${esc(uk.actionScript)}"/></td>
+                <td class="col-check"><input type="checkbox" data-action="check-script" data-cmd="${esc(line)}" ${checked} title="${esc(uk.actionScript)}"/></td>
                 <td class="flag"><code>${esc(c.flag)}</code></td>
                 <td>${esc(c.description)}</td>
                 <td class="actions">${actionButtons(line, `man-${c.id}`)}</td>
@@ -253,9 +256,12 @@ function bindWikiEvents(host, state, detail) {
   });
   host.querySelectorAll('[data-action="check-script"]').forEach((box) => {
     box.addEventListener('change', () => {
-      if (!box.checked) return;
       const cmd = box.getAttribute('data-cmd') || '';
-      state.onAddScript?.(cmd);
+      if (box.checked) {
+        state.onAddScript?.(cmd);
+      } else {
+        state.onRemoveScript?.(cmd);
+      }
     });
   });
 
@@ -285,6 +291,10 @@ function bindWikiEvents(host, state, detail) {
 
   // silence unused
   void detail;
+}
+
+function fmt(template, vars) {
+  return template.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? ''));
 }
 
 function esc(value) {

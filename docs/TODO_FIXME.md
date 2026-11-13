@@ -45,15 +45,28 @@
 | H3 | Script Builder стирає порожні рядки на commit | **done** — `ApplyBody` vs dense `SetLines`; L7 inner `#!` kept |
 | H4 | Catalog sync: per-package upsert + FTS → зависання | **done** — `UpsertCatalogProgramsBatch` (chunk 500, deferred FTS) |
 
+## Medium cycle (після hotfix)
+
+| ID | Опис | Статус |
+|----|------|--------|
+| M5 | `RunScript` не прибирає temp `snippetshow-script-*` | **done** — scrub on error + grace/stale |
+| M2 | `GetProgram` мовчки ігнорує помилку `ParseProgram` | **done** — `parseWarning` у відповіді + UI |
+| M3 | Немає cancel для UpdateIndex / catalog | **done** — `CancelIndex` + кнопка в toolbar |
+| M4 | `ListPrograms` FTS робить N+1 `GetProgramByID` | **done** — колонки в `SearchHit` |
+| L1 | Uncheck man → не прибирає з draft | **done** — `RemoveFromScript` |
+| M7 | Confirm gate trust-UI (DevTools `confirmed`) | **documented** — SAFE-02 / DECISIONS |
+
 ## Відомі обмеження Core / Wiki / Builder
 
 | ID | Опис | Нотатка |
 |----|------|---------|
 | CORE-01 | Man regex покриває типові OPTIONS/FLAGS; складні man — через Raw Man | ітеративно покращувати corpus |
 | SAFE-01 | Safety не парсить shell AST; обгортки поза `env/command/nice/nohup` і `$CMD` — відоме обмеження | ROADMAP backlog |
+| SAFE-02 | Confirm gate на стороні UI: `confirmed: true` з DevTools обходить діалог (Wails trust-UI) | by design для локального desktop; див. DECISIONS |
 | CORE-02 | Repo catalog apt/pacman/dnf — soft-fail при порожньому кеші (D5) | OK; UI показує hint |
+| UI-05 | ExportScriptFile/ExportBackup приймають шлях з JS (не лише dialog) | локальний trust boundary; UI використовує dialog |
 | CORE-03 | PM metadata lookup може не знайти пакет для `/usr/local` бінарників | summary з whatis / порожній package |
-| UI-01 | Повний sync apt-каталогу може бути довгим на дуже великих дзеркалах | progress + batch FTS (H4); див. `NFR_NOTES` catalog |
+| UI-01 | Повний sync apt-каталогу може бути довгим на дуже великих дзеркалах | progress + batch FTS (H4) + cancel (M3); див. `NFR_NOTES` catalog |
 | UI-02 | Copy залежить від Wails clipboard або наявності wl-copy/xclip/xsel | toast з помилкою якщо жоден шлях недоступний |
 | UI-03 | Run потребує встановленого терміналу з D7 | діалог/toast при ErrNotFound |
 | UI-04 | Bash highlight у Builder — мінімальний (shebang/comments/strings/keywords) | без важкої editor-lib (NFR RAM) |

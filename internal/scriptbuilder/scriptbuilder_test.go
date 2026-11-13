@@ -117,6 +117,29 @@ func TestApplyBodyAndEnsureShebang(t *testing.T) {
 	}
 }
 
+func TestRemoveCommandLastMatch(t *testing.T) {
+	d := NewDraft()
+	d.Add("echo a")
+	d.Add("echo b")
+	d.Add("echo a")
+	if !d.RemoveCommand("echo a") {
+		t.Fatal("expected remove")
+	}
+	snap := d.Snapshot()
+	if len(snap) != 2 || snap[0] != "echo a" || snap[1] != "echo b" {
+		t.Fatalf("should remove last match: %#v", snap)
+	}
+	if d.RemoveCommand("missing") {
+		t.Fatal("missing command should not remove")
+	}
+	if !d.RemoveCommand("  echo a  ") {
+		t.Fatal("trim match expected")
+	}
+	if d.Count() != 1 || d.Snapshot()[0] != "echo b" {
+		t.Fatalf("%v", d.Snapshot())
+	}
+}
+
 func TestWriteExecutable(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "demo.sh")

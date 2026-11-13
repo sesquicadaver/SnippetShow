@@ -37,10 +37,14 @@ type CustomScript struct {
 	UpdatedAt  string `json:"updatedAt"`
 }
 
-// SearchHit is an FTS5 match with the owning program id.
+// SearchHit is an FTS5 match with program columns needed by the navigator (M4: no N+1).
 type SearchHit struct {
-	ProgramID int64   `json:"programId"`
-	Name      string  `json:"name"`
-	Summary   string  `json:"summary"`
-	Rank      float64 `json:"rank"`
+	ProgramID   int64   `json:"programId"`
+	Name        string  `json:"name"`
+	PackageName string  `json:"packageName"`
+	Summary     string  `json:"summary"`
+	Version     string  `json:"version"`
+	IsInstalled bool    `json:"isInstalled"`
+	ManParsed   bool    `json:"manParsed"`
+	Rank        float64 `json:"rank"`
 }

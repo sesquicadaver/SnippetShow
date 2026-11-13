@@ -133,6 +133,7 @@ class WikiApp {
         this.paintToolbar();
       },
       onUpdate: () => this.runUpdate(),
+      onCancel: () => this.cancelIndex(),
       onSyncCatalog: () => this.runCatalog(),
       onExportBackup: () => this.exportBackup(),
       onImportBackup: () => this.importBackup(),
@@ -169,9 +170,11 @@ class WikiApp {
         this.rawOpen = false;
         this.paintWiki();
       },
+      draftLines: this.draft?.lines || [],
       onCopy: (cmd) => this.copyText(cmd),
       onRun: (cmd) => this.runCommand(cmd, false),
       onAddScript: (cmd) => this.addToScript(cmd),
+      onRemoveScript: (cmd) => this.removeFromScript(cmd),
       onSnippetAdd: () => {
         this.snippetForm = { open: true, id: 0, title: '', command: '', tags: '', error: '' };
         this.paintWiki();
@@ -272,16 +275,25 @@ class WikiApp {
       const detail = await AppAPI.GetProgram(name, true);
       if (req !== this._reqDetail) return;
       this.detail = detail;
-      this.status = fmt(uk.selected, { name });
+      this.detailLoading = false;
+      if (detail?.parseWarning) {
+        const warn = fmt(uk.statusParseWarning, { msg: detail.parseWarning });
+        this.status = warn;
+        this.showToast(warn);
+      } else {
+        this.status = fmt(uk.selected, { name });
+        this.paintToolbar();
+        this.paintWiki();
+      }
     } catch (err) {
       console.error(err);
       if (req !== this._reqDetail) return;
       this.detail = null;
+      this.detailLoading = false;
       this.status = `${uk.statusError}: ${err?.message || err}`;
+      this.paintToolbar();
+      this.paintWiki();
     }
-    this.detailLoading = false;
-    this.paintToolbar();
-    this.paintWiki();
     this.reloadList();
   }
 
@@ -364,7 +376,23 @@ class WikiApp {
       }
       const draft = await AppAPI.AddToScript(cmd);
       this.applyDraft(draft);
+      this.paintWiki();
       this.showToast(fmt(uk.toastScriptAdded, { n: this.draft.count }));
+    } catch (err) {
+      this.showToast(`${uk.statusError}: ${err?.message || err}`);
+    }
+  }
+
+  async removeFromScript(cmd) {
+    if (!cmd || !hasWails()) return;
+    try {
+      if (this.editorBody != null) {
+        await AppAPI.SetScriptBody(this.editorBody);
+      }
+      const draft = await AppAPI.RemoveFromScript(cmd);
+      this.applyDraft(draft);
+      this.paintWiki();
+      this.showToast(fmt(uk.toastScriptRemoved, { n: this.draft.count }));
     } catch (err) {
       this.showToast(`${uk.statusError}: ${err?.message || err}`);
     }
@@ -600,6 +628,17 @@ class WikiApp {
     }
   }
 
+  async cancelIndex() {
+    if (!this.busy || !hasWails()) return;
+    try {
+      await AppAPI.CancelIndex();
+      this.status = uk.statusCancelled;
+      this.paintToolbar();
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
   async runUpdate() {
     if (this.busy || !hasWails()) return;
     this.busy = true;
@@ -612,7 +651,8 @@ class WikiApp {
       this.status = fmt(uk.statusUpdated, { n });
     } catch (err) {
       console.error(err);
-      this.status = `${uk.statusError}: ${err?.message || err}`;
+      const msg = err?.message || String(err);
+      this.status = /скасов/i.test(msg) ? uk.statusCancelled : `${uk.statusError}: ${msg}`;
     }
     this.busy = false;
     this.progress = null;
@@ -636,7 +676,8 @@ class WikiApp {
       }
     } catch (err) {
       console.error(err);
-      this.status = `${uk.statusError}: ${err?.message || err}`;
+      const msg = err?.message || String(err);
+      this.status = /скасов/i.test(msg) ? uk.statusCancelled : `${uk.statusError}: ${msg}`;
     }
     this.busy = false;
     this.progress = null;
