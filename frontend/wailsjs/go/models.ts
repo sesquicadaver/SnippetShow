@@ -87,6 +87,7 @@ export namespace app {
 	export class ProgramDetail {
 	    program: ProgramDTO;
 	    commands: ManCommandDTO[];
+	    snippets: SnippetDTO[];
 	    rawMan: string;
 	    installCommand: string;
 	    packageManager: string;
@@ -100,6 +101,7 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.program = this.convertValues(source["program"], ProgramDTO);
 	        this.commands = this.convertValues(source["commands"], ManCommandDTO);
+	        this.snippets = this.convertValues(source["snippets"], SnippetDTO);
 	        this.rawMan = source["rawMan"];
 	        this.installCommand = source["installCommand"];
 	        this.packageManager = source["packageManager"];
@@ -123,6 +125,120 @@ export namespace app {
 		    }
 		    return a;
 		}
+	}
+	export class SnippetDTO {
+	    id: number;
+	    programId: number;
+	    title: string;
+	    command: string;
+	    tags: string;
+	    createdAt: string;
+
+	    static createFrom(source: any = {}) {
+	        return new SnippetDTO(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.programId = source["programId"];
+	        this.title = source["title"];
+	        this.command = source["command"];
+	        this.tags = source["tags"];
+	        this.createdAt = source["createdAt"];
+	    }
+	}
+	export class SnippetInput {
+	    programId: number;
+	    title: string;
+	    command: string;
+	    tags: string;
+
+	    static createFrom(source: any = {}) {
+	        return new SnippetInput(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.programId = source["programId"];
+	        this.title = source["title"];
+	        this.command = source["command"];
+	        this.tags = source["tags"];
+	    }
+	}
+	export class SafetyDTO {
+	    dangerous: boolean;
+	    reasons: string[];
+
+	    static createFrom(source: any = {}) {
+	        return new SafetyDTO(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.dangerous = source["dangerous"];
+	        this.reasons = source["reasons"];
+	    }
+	}
+	export class RunRequest {
+	    command: string;
+	    confirmed: boolean;
+
+	    static createFrom(source: any = {}) {
+	        return new RunRequest(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.command = source["command"];
+	        this.confirmed = source["confirmed"];
+	    }
+	}
+	export class RunResponse {
+	    started: boolean;
+	    needsConfirm: boolean;
+	    reasons: string[];
+	    error: string;
+
+	    static createFrom(source: any = {}) {
+	        return new RunResponse(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.started = source["started"];
+	        this.needsConfirm = source["needsConfirm"];
+	        this.reasons = source["reasons"];
+	        this.error = source["error"];
+	    }
+	}
+	export class CopyResponse {
+	    ok: boolean;
+	    message: string;
+
+	    static createFrom(source: any = {}) {
+	        return new CopyResponse(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.message = source["message"];
+	    }
+	}
+	export class ScriptDraftDTO {
+	    lines: string[];
+	    count: number;
+
+	    static createFrom(source: any = {}) {
+	        return new ScriptDraftDTO(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.lines = source["lines"];
+	        this.count = source["count"];
+	    }
 	}
 	export class ProgressEvent {
 	    phase: string;

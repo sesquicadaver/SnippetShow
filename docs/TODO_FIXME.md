@@ -17,18 +17,23 @@
 |----|--------|----|--------|
 | STUB-10 | `frontend/src/ui` | Read-only Wiki: toolbar / navigator / man / Raw Man | done |
 
+## Закрито у Phase 3
+
+| ID | Модуль | Що | Статус |
+|----|--------|----|--------|
+| STUB-05 | `internal/clipboard` | `Copy` (wl-copy / xclip / xsel + Wails ClipboardSetText) | done |
+| STUB-06 | `internal/terminal` | `Detect`, `Run` (D7 + argv templates) | done |
+| STUB-07 | `internal/safety` | `Analyze` (rm -rf / dd / mkfs / sudo) | done |
+| STUB-11 | `frontend` Wiki actions | Copy / Run / + Script | done |
+| STUB-12 | `frontend` «Мої команди» | CRUD сніпетів + FTS sync | done |
+
 ## Відкриті заглушки (наступні фази)
 
 | ID | Модуль | Що | Цільова фаза |
 |----|--------|----|--------------|
-| STUB-05 | `internal/clipboard` | `Copy` | 3 |
-| STUB-06 | `internal/terminal` | `Detect`, `Run` | 3 |
-| STUB-07 | `internal/safety` | `Analyze` | 3 |
 | STUB-08 | `internal/backup` | `Export`, `Import` | 4 |
-| STUB-09 | `internal/scriptbuilder` | `Draft.Generate` | 4 |
-| STUB-11 | `frontend` Wiki actions | Copy / Run / + Script у таблиці man — заглушка «Фаза 3» | 3 |
-| STUB-12 | `frontend` «Мої команди» | CRUD сніпетів — placeholder | 3 |
-| STUB-13 | `frontend` Script Builder | права панель — placeholder фази 4 | 4 |
+| STUB-09 | `internal/scriptbuilder` | повний UI reorder/export/save (draft Add уже є) | 4 |
+| STUB-13 | `frontend` Script Builder | права панель — placeholder фази 4 (лічильник draft є) | 4 |
 
 ## Відомі обмеження Core / Wiki
 
@@ -38,6 +43,8 @@
 | CORE-02 | Repo catalog apt/pacman/dnf — soft-fail при порожньому кеші (D5) | OK; UI показує hint |
 | CORE-03 | PM metadata lookup може не знайти пакет для `/usr/local` бінарників | summary з whatis / порожній package |
 | UI-01 | Повний sync apt-каталогу може бути довгим на великих дзеркалах | progress + окрема кнопка «Підвантажити каталог» |
+| UI-02 | Copy залежить від Wails clipboard або наявності wl-copy/xclip/xsel | toast з помилкою якщо жоден шлях недоступний |
+| UI-03 | Run потребує встановленого терміналу з D7 | діалог/toast при ErrNotFound |
 
 ## Відкриті дефекти середовища
 

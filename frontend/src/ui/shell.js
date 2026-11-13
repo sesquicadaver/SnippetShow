@@ -5,7 +5,7 @@ import { renderNavigator } from './navigator.js';
 import { renderWiki } from './wiki.js';
 
 /**
- * Phase 2 Wiki application shell: toolbar + navigator + center + builder placeholder.
+ * Phase 3 Wiki shell: toolbar + navigator + center (man/snippets/actions) + builder draft count.
  * @param {HTMLElement} root
  * @param {{ name?: string, subtitle?: string, phase?: string }} info
  * @param {string} status
@@ -17,10 +17,11 @@ export function renderShell(root, info, status) {
       <div class="app-body">
         <aside class="app-nav" id="navigator" aria-label="Список програм"></aside>
         <main class="app-wiki" id="wiki" aria-label="Wiki"></main>
-        <aside class="app-builder" aria-label="${esc(uk.builderPlaceholder)}">
+        <aside class="app-builder" id="builder" aria-label="${esc(uk.builderPlaceholder)}">
           <div class="builder-placeholder">
             <h2>${esc(uk.builderPlaceholder)}</h2>
             <p>${esc(uk.builderHint)}</p>
+            <p class="builder-draft" id="builder-draft"></p>
             <p class="muted">${esc(status || uk.phaseHint)}</p>
           </div>
         </aside>
@@ -43,6 +44,7 @@ class WikiApp {
     this.toolbarEl = root.querySelector('#toolbar');
     this.navEl = root.querySelector('#navigator');
     this.wikiEl = root.querySelector('#wiki');
+    this.builderDraftEl = root.querySelector('#builder-draft');
 
     this.mode = 'installed';
     this.letter = 'all';
@@ -59,6 +61,11 @@ class WikiApp {
     this.rawOpen = false;
     this.rawText = '';
     this.rawLoading = false;
+    this.toast = '';
+    this._toastTimer = null;
+    this.confirm = null;
+    this.snippetForm = { open: false, id: 0, title: '', command: '', tags: '', error: '' };
+    this.draftCount = 0;
     this._searchTimer = null;
     this._unsubProgress = null;
     this._reqList = 0;
@@ -72,6 +79,7 @@ class WikiApp {
       this.paintToolbar();
     });
     this.paintAll();
+    this.refreshDraft();
     this.bootstrap();
   }
 
@@ -98,6 +106,7 @@ class WikiApp {
     this.paintToolbar();
     this.paintNavigator();
     this.paintWiki();
+    this.paintBuilder();
   }
 
   paintToolbar() {
@@ -145,6 +154,9 @@ class WikiApp {
       rawOpen: this.rawOpen,
       rawText: this.rawText,
       rawLoading: this.rawLoading,
+      toast: this.toast,
+      confirm: this.confirm,
+      snippetForm: this.snippetForm,
       onFlagFilter: (q) => {
         this.flagFilter = q;
         this.paintWiki();
@@ -154,7 +166,35 @@ class WikiApp {
         this.rawOpen = false;
         this.paintWiki();
       },
+      onCopy: (cmd) => this.copyText(cmd),
+      onRun: (cmd) => this.runCommand(cmd, false),
+      onAddScript: (cmd) => this.addToScript(cmd),
+      onSnippetAdd: () => {
+        this.snippetForm = { open: true, id: 0, title: '', command: '', tags: '', error: '' };
+        this.paintWiki();
+      },
+      onSnippetCancel: () => {
+        this.snippetForm = { open: false, id: 0, title: '', command: '', tags: '', error: '' };
+        this.paintWiki();
+      },
+      onSnippetEdit: (id) => this.openSnippetEdit(id),
+      onSnippetDelete: (id) => this.deleteSnippet(id),
+      onSnippetSave: (fields) => this.saveSnippet(fields),
+      onConfirmRun: () => {
+        const cmd = this.confirm?.command || '';
+        this.confirm = null;
+        this.runCommand(cmd, true);
+      },
+      onConfirmCancel: () => {
+        this.confirm = null;
+        this.paintWiki();
+      },
     });
+  }
+
+  paintBuilder() {
+    if (!this.builderDraftEl) return;
+    this.builderDraftEl.textContent = fmt(uk.builderDraftCount, { n: this.draftCount });
   }
 
   listQuery() {
@@ -191,6 +231,8 @@ class WikiApp {
     this.flagFilter = '';
     this.rawOpen = false;
     this.rawText = '';
+    this.snippetForm = { open: false, id: 0, title: '', command: '', tags: '', error: '' };
+    this.confirm = null;
     this.detailLoading = true;
     this.paintNavigator();
     this.paintWiki();
@@ -209,7 +251,6 @@ class WikiApp {
     this.detailLoading = false;
     this.paintToolbar();
     this.paintWiki();
-    // Refresh list row man_parsed / summary after lazy parse.
     this.reloadList();
   }
 
@@ -225,6 +266,140 @@ class WikiApp {
     }
     this.rawLoading = false;
     this.paintWiki();
+  }
+
+  showToast(msg) {
+    this.toast = msg;
+    this.paintWiki();
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => {
+      this.toast = '';
+      this.paintWiki();
+    }, 1800);
+  }
+
+  async copyText(cmd) {
+    if (!cmd || !hasWails()) return;
+    try {
+      await AppAPI.CopyText(cmd);
+      this.showToast(uk.toastCopied);
+    } catch (err) {
+      this.showToast(`${uk.statusError}: ${err?.message || err}`);
+    }
+  }
+
+  async runCommand(cmd, confirmed) {
+    if (!cmd || !hasWails()) return;
+    try {
+      const res = await AppAPI.RunCommand({ command: cmd, confirmed: !!confirmed });
+      if (res?.needsConfirm) {
+        this.confirm = { command: cmd, reasons: res.reasons || [] };
+        this.paintWiki();
+        return;
+      }
+      if (res?.started) {
+        this.showToast(uk.toastRunStarted);
+        this.status = uk.toastRunStarted;
+        this.paintToolbar();
+      }
+    } catch (err) {
+      this.showToast(`${uk.statusError}: ${err?.message || err}`);
+    }
+  }
+
+  async addToScript(cmd) {
+    if (!cmd || !hasWails()) return;
+    try {
+      const draft = await AppAPI.AddToScript(cmd);
+      this.draftCount = draft?.count || 0;
+      this.paintBuilder();
+      this.showToast(fmt(uk.toastScriptAdded, { n: this.draftCount }));
+    } catch (err) {
+      this.showToast(`${uk.statusError}: ${err?.message || err}`);
+    }
+  }
+
+  async refreshDraft() {
+    if (!hasWails()) return;
+    try {
+      const draft = await AppAPI.ScriptDraft();
+      this.draftCount = draft?.count || 0;
+      this.paintBuilder();
+    } catch {
+      // ignore
+    }
+  }
+
+  openSnippetEdit(id) {
+    const sn = (this.detail?.snippets || []).find((s) => s.id === id);
+    if (!sn) return;
+    this.snippetForm = {
+      open: true,
+      id: sn.id,
+      title: sn.title || '',
+      command: sn.command || '',
+      tags: sn.tags || '',
+      error: '',
+    };
+    this.paintWiki();
+  }
+
+  async saveSnippet(fields) {
+    if (!this.detail?.program?.id || !hasWails()) return;
+    const title = (fields.title || '').trim();
+    const command = (fields.command || '').trim();
+    const tags = (fields.tags || '').trim();
+    if (!title || !command) {
+      this.snippetForm = { ...this.snippetForm, open: true, error: uk.snippetValidation };
+      this.paintWiki();
+      return;
+    }
+    try {
+      if (this.snippetForm.id) {
+        await AppAPI.UpdateSnippet(this.snippetForm.id, {
+          programId: this.detail.program.id,
+          title,
+          command,
+          tags,
+        });
+      } else {
+        await AppAPI.CreateSnippet({
+          programId: this.detail.program.id,
+          title,
+          command,
+          tags,
+        });
+      }
+      this.snippetForm = { open: false, id: 0, title: '', command: '', tags: '', error: '' };
+      await this.reloadDetail();
+      this.showToast(uk.toastSnippetSaved);
+    } catch (err) {
+      this.snippetForm = { ...this.snippetForm, open: true, error: err?.message || String(err) };
+      this.paintWiki();
+    }
+  }
+
+  async deleteSnippet(id) {
+    if (!hasWails()) return;
+    if (!window.confirm(uk.snippetDeleteConfirm)) return;
+    try {
+      await AppAPI.DeleteSnippet(id);
+      await this.reloadDetail();
+      this.showToast(uk.toastSnippetDeleted);
+    } catch (err) {
+      this.showToast(`${uk.statusError}: ${err?.message || err}`);
+    }
+  }
+
+  async reloadDetail() {
+    if (!this.selected || !hasWails()) return;
+    try {
+      this.detail = await AppAPI.GetProgram(this.selected, false);
+      this.paintWiki();
+    } catch (err) {
+      this.status = `${uk.statusError}: ${err?.message || err}`;
+      this.paintToolbar();
+    }
   }
 
   async runUpdate() {

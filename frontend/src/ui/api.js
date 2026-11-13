@@ -29,6 +29,15 @@ export const AppAPI = {
   SearchPrograms: (q) => call('SearchPrograms', q),
   DetectPackageManager: () => call('DetectPackageManager'),
   InstallCommandFor: (pkg) => call('InstallCommandFor', pkg),
+  ListSnippets: (programID) => call('ListSnippets', programID),
+  CreateSnippet: (inPayload) => call('CreateSnippet', inPayload),
+  UpdateSnippet: (id, inPayload) => call('UpdateSnippet', id, inPayload),
+  DeleteSnippet: (id) => call('DeleteSnippet', id),
+  AnalyzeCommand: (command) => call('AnalyzeCommand', command),
+  CopyText: (text) => call('CopyText', text),
+  RunCommand: (req) => call('RunCommand', req),
+  AddToScript: (command) => call('AddToScript', command),
+  ScriptDraft: () => call('ScriptDraft'),
 };
 
 /**

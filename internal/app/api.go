@@ -15,6 +15,7 @@ import (
 	"snippetshow/internal/index"
 	"snippetshow/internal/manparser"
 	"snippetshow/internal/scanner"
+	"snippetshow/internal/scriptbuilder"
 )
 
 // Info describes product identity shown in the UI shell.
@@ -47,14 +48,15 @@ type ManCommandDTO struct {
 	Description string `json:"description"`
 }
 
-// ProgramDetail bundles program metadata with man commands and install hint.
+// ProgramDetail bundles program metadata with man commands, snippets and install hint.
 type ProgramDetail struct {
-	Program         ProgramDTO      `json:"program"`
-	Commands        []ManCommandDTO `json:"commands"`
-	RawMan          string          `json:"rawMan,omitempty"`
-	InstallCommand  string          `json:"installCommand,omitempty"`
-	PackageManager  string          `json:"packageManager,omitempty"`
-	CacheHint       string          `json:"cacheHint,omitempty"`
+	Program        ProgramDTO      `json:"program"`
+	Commands       []ManCommandDTO `json:"commands"`
+	Snippets       []SnippetDTO    `json:"snippets"`
+	RawMan         string          `json:"rawMan,omitempty"`
+	InstallCommand string          `json:"installCommand,omitempty"`
+	PackageManager string          `json:"packageManager,omitempty"`
+	CacheHint      string          `json:"cacheHint,omitempty"`
 }
 
 // SearchResultDTO is an FTS hit for the UI.
@@ -87,24 +89,32 @@ type ProgressHandler func(ProgressEvent)
 
 // API is the application service facade bound through the Wails App root.
 type API struct {
-	mu       sync.Mutex
-	store    *db.Store
-	updater  *index.Updater
-	parser   *manparser.Parser
-	dbPath   string
+	mu         sync.Mutex
+	store      *db.Store
+	updater    *index.Updater
+	parser     *manparser.Parser
+	dbPath     string
 	onProgress ProgressHandler
 	updating   bool
+	draft      *scriptbuilder.Draft
 }
 
 // New returns an API that opens the default DB path lazily.
 func New() *API {
-	return &API{dbPath: db.DefaultPath, parser: manparser.New()}
+	return &API{
+		dbPath: db.DefaultPath,
+		parser: manparser.New(),
+		draft:  scriptbuilder.NewDraft(),
+	}
 }
 
 // NewWithStore wires a pre-opened store (tests).
 func NewWithStore(store *db.Store) *API {
 	u := index.New(store)
-	return &API{store: store, updater: u, parser: u.Parser, dbPath: store.Path()}
+	return &API{
+		store: store, updater: u, parser: u.Parser, dbPath: store.Path(),
+		draft: scriptbuilder.NewDraft(),
+	}
 }
 
 // SetProgressHandler registers a callback for index/catalog progress (UI).
@@ -122,7 +132,7 @@ func (a *API) Info() Info {
 		Module:   "snippetshow",
 		DBPath:   db.DefaultPath,
 		UILocale: "uk",
-		Phase:    "2",
+		Phase:    "3",
 		Frontend: "vanilla-js",
 		License:  "MIT",
 	}
@@ -130,7 +140,7 @@ func (a *API) Info() Info {
 
 // PhaseStatus is a human-readable build stage marker for the shell UI.
 func (a *API) PhaseStatus() string {
-	return "Фаза 2: Read-Only Wiki UI (пошук, алфавіт, man, оновлення індексу)"
+	return "Фаза 3: User Snippets & Actions (CRUD, Copy, Run + safety)"
 }
 
 func (a *API) ensure() error {
@@ -291,9 +301,16 @@ func (a *API) GetProgram(name string, parseMan bool) (*ProgramDetail, error) {
 	if err != nil {
 		return nil, err
 	}
-	dto := ProgramDetail{Program: toDTO(p)}
+	sns, err := a.store.ListUserSnippets(p.ID)
+	if err != nil {
+		return nil, err
+	}
+	dto := ProgramDetail{Program: toDTO(p), Snippets: []SnippetDTO{}}
 	for _, c := range cmds {
 		dto.Commands = append(dto.Commands, ManCommandDTO{ID: c.ID, Flag: c.Flag, Description: c.Description})
+	}
+	for _, sn := range sns {
+		dto.Snippets = append(dto.Snippets, toSnippetDTO(sn))
 	}
 	pm, _ := scanner.DetectPM()
 	dto.PackageManager = string(pm)

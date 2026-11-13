@@ -401,10 +401,158 @@ html, body {
   color: var(--accent);
 }
 
-.action-stub {
-  color: var(--muted);
-  font-size: 0.78rem;
+.action-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
 }
+
+.btn-tiny {
+  padding: 0.2rem 0.45rem;
+  font-size: 0.75rem;
+}
+
+.btn-accent {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: transparent;
+}
+
+.btn-accent:hover { filter: brightness(1.05); }
+
+.btn-danger {
+  border-color: rgba(184, 137, 74, 0.55);
+  color: #f0c48a;
+}
+
+.snippets-panel {
+  border-top: 1px solid var(--line);
+  padding-top: 0.85rem;
+  display: grid;
+  gap: 0.65rem;
+  min-height: 0;
+}
+
+.snippets-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.snippets-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.snippets-table-wrap {
+  max-height: 240px;
+}
+
+.snippet-form {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  background: rgba(36, 48, 36, 0.45);
+  animation: fade-in 160ms ease-out;
+}
+
+.snippet-form h4 {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.snippet-form label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.snippet-form input {
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--line);
+  background: #0f140f;
+  color: var(--ink);
+  font: inherit;
+}
+
+.snippet-form input.mono {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.form-error {
+  margin: 0;
+  color: #f0c48a;
+  font-size: 0.85rem;
+}
+
+.toast {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 50;
+  padding: 0.65rem 0.9rem;
+  background: var(--bg-elev);
+  border: 1px solid var(--accent);
+  color: var(--ink);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+  animation: fade-in 160ms ease-out;
+}
+
+.confirm-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: grid;
+  place-items: center;
+}
+
+.confirm-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 10, 8, 0.62);
+}
+
+.confirm-sheet {
+  position: relative;
+  width: min(520px, calc(100vw - 2rem));
+  padding: 1rem 1.1rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 0.65rem;
+  animation: fade-in 180ms ease-out;
+}
+
+.confirm-sheet h3 { margin: 0; font-size: 1.05rem; }
+.confirm-sheet p { margin: 0; color: var(--muted); }
+.confirm-reasons { color: var(--ink) !important; }
+.confirm-cmd {
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  background: #0f140f;
+  border: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+.builder-draft {
+  margin: 0.35rem 0;
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+
+.row-actions { margin: 0.5rem 0 0.75rem; }
 
 .wiki-empty {
   display: grid;

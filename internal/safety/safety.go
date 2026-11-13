@@ -1,21 +1,65 @@
-// Package safety detects dangerous shell constructs before Run.
-// Phase 0: skeleton only — pattern matrix lands in Phase 3 (P3-9…P3-10).
-
+// Package safety detects dangerous shell constructs before Run (Phase 3 / P3-9…P3-10).
 package safety
 
-import "errors"
-
-// ErrNotImplemented marks Phase 0 stubs. Documented in docs/TODO_FIXME.md.
-var ErrNotImplemented = errors.New("safety: not implemented (phase 3)")
+import (
+	"regexp"
+	"strings"
+)
 
 // Result describes whether a command needs user confirmation.
 type Result struct {
-	Dangerous bool
-	Reasons   []string
+	Dangerous bool     `json:"dangerous"`
+	Reasons   []string `json:"reasons"`
 }
 
-// Analyze inspects a command for rm -rf / dd / mkfs / sudo patterns. Phase 0 stub.
-func Analyze(command string) (Result, error) {
-	_ = command
-	return Result{}, ErrNotImplemented
+var (
+	reSudo = regexp.MustCompile(`(?i)(?:^|[;&|]|\|\||&&)\s*sudo\b`)
+	reDd   = regexp.MustCompile(`(?i)(?:^|[;&|]|\|\||&&)\s*dd\s+`)
+	reMkfs = regexp.MustCompile(`(?i)(?:^|[;&|]|\|\||&&)\s*mkfs(?:\.[a-z0-9]+)?\b`)
+	// rm may appear after sudo / env prefixes — match as a command word.
+	reRm = regexp.MustCompile(`(?i)(?:^|[;&|\s]|\|\||&&)rm\b([^;&|]*)`)
+)
+
+// Analyze inspects a command for rm -rf / dd / mkfs / sudo patterns (and chained variants).
+func Analyze(command string) Result {
+	cmd := strings.TrimSpace(command)
+	if cmd == "" {
+		return Result{}
+	}
+	var reasons []string
+	if reSudo.MatchString(cmd) {
+		reasons = append(reasons, "sudo")
+	}
+	if reDd.MatchString(cmd) {
+		reasons = append(reasons, "dd")
+	}
+	if reMkfs.MatchString(cmd) {
+		reasons = append(reasons, "mkfs")
+	}
+	if hasRmRF(cmd) {
+		reasons = append(reasons, "rm -rf")
+	}
+	return Result{Dangerous: len(reasons) > 0, Reasons: reasons}
+}
+
+func hasRmRF(cmd string) bool {
+	matches := reRm.FindAllStringSubmatch(cmd, -1)
+	for _, g := range matches {
+		args := " " + strings.ToLower(g[1]) + " "
+		combined := regexp.MustCompile(`\s-[a-z]*r[a-z]*f|\s-[a-z]*f[a-z]*r`).MatchString(args)
+		if combined {
+			return true
+		}
+		hasR := strings.Contains(args, "--recursive") || hasShortFlag(args, 'r')
+		hasF := strings.Contains(args, "--force") || hasShortFlag(args, 'f')
+		if hasR && hasF {
+			return true
+		}
+	}
+	return false
+}
+
+func hasShortFlag(args string, letter byte) bool {
+	re := regexp.MustCompile(`\s-[a-z]*` + string(letter) + `[a-z]*(\s|$)`)
+	return re.MatchString(args)
 }
