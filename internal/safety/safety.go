@@ -13,11 +13,12 @@ type Result struct {
 }
 
 var (
-	reSudo = regexp.MustCompile(`(?i)(?:^|[;&|]|\|\||&&)\s*sudo\b`)
-	reDd   = regexp.MustCompile(`(?i)(?:^|[;&|]|\|\||&&)\s*dd\s+`)
-	reMkfs = regexp.MustCompile(`(?i)(?:^|[;&|]|\|\||&&)\s*mkfs(?:\.[a-z0-9]+)?\b`)
+	// (?m) so shebang-prefixed multi-line scripts still match line-leading commands.
+	reSudo = regexp.MustCompile(`(?im)(?:^|[;&|]|\|\||&&)\s*sudo\b`)
+	reDd   = regexp.MustCompile(`(?im)(?:^|[;&|]|\|\||&&)\s*dd\s+`)
+	reMkfs = regexp.MustCompile(`(?im)(?:^|[;&|]|\|\||&&)\s*mkfs(?:\.[a-z0-9]+)?\b`)
 	// rm may appear after sudo / env prefixes — match as a command word.
-	reRm = regexp.MustCompile(`(?i)(?:^|[;&|\s]|\|\||&&)rm\b([^;&|]*)`)
+	reRm = regexp.MustCompile(`(?im)(?:^|[;&|\s]|\|\||&&)rm\b([^;&|]*)`)
 )
 
 // Analyze inspects a command for rm -rf / dd / mkfs / sudo patterns (and chained variants).

@@ -9,9 +9,13 @@ export function AnalyzeCommand(arg1:string):Promise<app.SafetyDTO>;
 
 export function AppInfo():Promise<app.Info>;
 
+export function ClearScriptDraft():Promise<app.ScriptDraftDTO>;
+
 export function CopyText(arg1:string):Promise<app.CopyResponse>;
 
 export function CreateSnippet(arg1:app.SnippetInput):Promise<app.SnippetDTO>;
+
+export function DeleteCustomScript(arg1:number):Promise<void>;
 
 export function DeleteSnippet(arg1:number):Promise<void>;
 
@@ -19,11 +23,27 @@ export function DetectPackageManager():Promise<string>;
 
 export function EnsureIndexed():Promise<index.UpdateResult>;
 
+export function ExportBackup(arg1:string):Promise<void>;
+
+export function ExportBackupDialog():Promise<string>;
+
+export function ExportScriptDialog(arg1:string):Promise<string>;
+
+export function ExportScriptFile(arg1:string,arg2:string):Promise<void>;
+
+export function GenerateScript():Promise<string>;
+
 export function GetProgram(arg1:string,arg2:boolean):Promise<app.ProgramDetail>;
 
 export function GetRawMan(arg1:string):Promise<string>;
 
+export function ImportBackup(arg1:string):Promise<app.BackupResultDTO>;
+
+export function ImportBackupDialog():Promise<app.BackupResultDTO>;
+
 export function InstallCommandFor(arg1:string):Promise<string>;
+
+export function ListCustomScripts():Promise<Array<app.CustomScriptDTO>>;
 
 export function ListInstalled():Promise<Array<app.ProgramDTO>>;
 
@@ -31,9 +51,19 @@ export function ListPrograms(arg1:app.ListQuery):Promise<Array<app.ProgramDTO>>;
 
 export function ListSnippets(arg1:number):Promise<Array<app.SnippetDTO>>;
 
+export function LoadCustomScript(arg1:number):Promise<app.ScriptDraftDTO>;
+
+export function MoveScriptLine(arg1:number,arg2:string):Promise<app.ScriptDraftDTO>;
+
 export function PhaseStatus():Promise<string>;
 
+export function RemoveScriptLine(arg1:number):Promise<app.ScriptDraftDTO>;
+
 export function RunCommand(arg1:app.RunRequest):Promise<app.RunResponse>;
+
+export function RunScript(arg1:app.RunRequest):Promise<app.RunResponse>;
+
+export function SaveCustomScript(arg1:number,arg2:app.CustomScriptInput):Promise<app.CustomScriptDTO>;
 
 export function ScanInstalled():Promise<index.UpdateResult>;
 
@@ -42,6 +72,8 @@ export function ScriptDraft():Promise<app.ScriptDraftDTO>;
 export function Search(arg1:string):Promise<Array<app.SearchResultDTO>>;
 
 export function SearchPrograms(arg1:app.ListQuery):Promise<Array<app.SearchResultDTO>>;
+
+export function SetScriptBody(arg1:string):Promise<app.ScriptDraftDTO>;
 
 export function SyncRepoCatalog():Promise<index.CatalogSyncResult>;
 

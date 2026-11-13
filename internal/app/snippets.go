@@ -56,12 +56,6 @@ type CopyResponse struct {
 	Message string `json:"message"`
 }
 
-// ScriptDraftDTO is a lightweight view of the in-memory builder draft (P3-11).
-type ScriptDraftDTO struct {
-	Lines []string `json:"lines"`
-	Count int      `json:"count"`
-}
-
 // ListSnippets returns user snippets for a program (P3-1).
 func (a *API) ListSnippets(programID int64) ([]SnippetDTO, error) {
 	if err := a.ensure(); err != nil {
@@ -158,22 +152,6 @@ func (a *API) RunCommand(req RunRequest) (RunResponse, error) {
 		return RunResponse{Error: err.Error()}, err
 	}
 	return RunResponse{Started: true}, nil
-}
-
-// AddToScript appends a command to the in-memory Script Builder draft (P3-11).
-func (a *API) AddToScript(command string) (ScriptDraftDTO, error) {
-	cmd := strings.TrimSpace(command)
-	if cmd == "" {
-		return ScriptDraftDTO{}, fmt.Errorf("порожня команда")
-	}
-	a.draft.Add(cmd)
-	return a.ScriptDraft(), nil
-}
-
-// ScriptDraft returns the current in-memory draft snapshot.
-func (a *API) ScriptDraft() ScriptDraftDTO {
-	lines := a.draft.Snapshot()
-	return ScriptDraftDTO{Lines: lines, Count: len(lines)}
 }
 
 func validateSnippet(title, command string) error {

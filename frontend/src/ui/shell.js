@@ -3,9 +3,10 @@ import { AppAPI, hasWails, onIndexProgress } from './api.js';
 import { renderToolbar } from './toolbar.js';
 import { renderNavigator } from './navigator.js';
 import { renderWiki } from './wiki.js';
+import { renderBuilder } from './builder.js';
 
 /**
- * Phase 3 Wiki shell: toolbar + navigator + center (man/snippets/actions) + builder draft count.
+ * Phase 4 Wiki shell: toolbar + navigator + center + Script Builder + backup.
  * @param {HTMLElement} root
  * @param {{ name?: string, subtitle?: string, phase?: string }} info
  * @param {string} status
@@ -17,19 +18,12 @@ export function renderShell(root, info, status) {
       <div class="app-body">
         <aside class="app-nav" id="navigator" aria-label="Список програм"></aside>
         <main class="app-wiki" id="wiki" aria-label="Wiki"></main>
-        <aside class="app-builder" id="builder" aria-label="${esc(uk.builderPlaceholder)}">
-          <div class="builder-placeholder">
-            <h2>${esc(uk.builderPlaceholder)}</h2>
-            <p>${esc(uk.builderHint)}</p>
-            <p class="builder-draft" id="builder-draft"></p>
-            <p class="muted">${esc(status || uk.phaseHint)}</p>
-          </div>
-        </aside>
+        <aside class="app-builder" id="builder" aria-label="${esc(uk.builderTitle)}"></aside>
       </div>
     </div>
   `;
 
-  const app = new WikiApp(root, info);
+  const app = new WikiApp(root, info, status);
   app.mount();
 }
 
@@ -37,14 +31,15 @@ class WikiApp {
   /**
    * @param {HTMLElement} root
    * @param {object} info
+   * @param {string} statusHint
    */
-  constructor(root, info) {
+  constructor(root, info, statusHint) {
     this.root = root;
     this.info = info;
     this.toolbarEl = root.querySelector('#toolbar');
     this.navEl = root.querySelector('#navigator');
     this.wikiEl = root.querySelector('#wiki');
-    this.builderDraftEl = root.querySelector('#builder-draft');
+    this.builderEl = root.querySelector('#builder');
 
     this.mode = 'installed';
     this.letter = 'all';
@@ -55,7 +50,7 @@ class WikiApp {
     this.listLoading = false;
     this.detailLoading = false;
     this.busy = false;
-    this.status = uk.statusIdle;
+    this.status = statusHint || uk.statusIdle;
     this.progress = null;
     this.flagFilter = '';
     this.rawOpen = false;
@@ -65,11 +60,16 @@ class WikiApp {
     this._toastTimer = null;
     this.confirm = null;
     this.snippetForm = { open: false, id: 0, title: '', command: '', tags: '', error: '' };
-    this.draftCount = 0;
+    this.draft = { lines: [], count: 0, body: '' };
+    this.editorBody = null;
+    this.builderOpen = true;
+    this.savedScripts = [];
+    this.savedScriptId = 0;
     this._searchTimer = null;
     this._unsubProgress = null;
     this._reqList = 0;
     this._reqDetail = 0;
+    this._editorTimer = null;
   }
 
   mount() {
@@ -80,6 +80,7 @@ class WikiApp {
     });
     this.paintAll();
     this.refreshDraft();
+    this.refreshSavedScripts();
     this.bootstrap();
   }
 
@@ -133,6 +134,8 @@ class WikiApp {
       },
       onUpdate: () => this.runUpdate(),
       onSyncCatalog: () => this.runCatalog(),
+      onExportBackup: () => this.exportBackup(),
+      onImportBackup: () => this.importBackup(),
     });
   }
 
@@ -182,8 +185,13 @@ class WikiApp {
       onSnippetSave: (fields) => this.saveSnippet(fields),
       onConfirmRun: () => {
         const cmd = this.confirm?.command || '';
+        const kind = this.confirm?.kind || 'command';
         this.confirm = null;
-        this.runCommand(cmd, true);
+        if (kind === 'script') {
+          this.runScript(cmd, true);
+        } else {
+          this.runCommand(cmd, true);
+        }
       },
       onConfirmCancel: () => {
         this.confirm = null;
@@ -193,8 +201,31 @@ class WikiApp {
   }
 
   paintBuilder() {
-    if (!this.builderDraftEl) return;
-    this.builderDraftEl.textContent = fmt(uk.builderDraftCount, { n: this.draftCount });
+    renderBuilder(this.builderEl, {
+      draft: this.draft,
+      editorBody: this.editorBody != null ? this.editorBody : this.draft.body,
+      builderOpen: this.builderOpen,
+      savedScripts: this.savedScripts,
+      onToggle: () => {
+        this.builderOpen = !this.builderOpen;
+        this.root.querySelector('.app-body')?.classList.toggle('builder-collapsed', !this.builderOpen);
+        this.paintBuilder();
+      },
+      onEditorInput: (body) => {
+        this.editorBody = body;
+      },
+      onEditorCommit: (body) => this.commitEditor(body),
+      onMove: (index, dir) => this.moveLine(index, dir),
+      onRemove: (index) => this.removeLine(index),
+      onReorder: (from, to) => this.reorderLines(from, to),
+      onCopy: (body) => this.copyText(body || this.draft.body),
+      onRun: (body) => this.runScript(body, false),
+      onExport: (body) => this.exportScript(body),
+      onSave: (body) => this.saveScript(body),
+      onClear: () => this.clearDraft(),
+      onLoad: (id) => this.loadSavedScript(id),
+      onDeleteSaved: (id) => this.deleteSavedScript(id),
+    });
   }
 
   listQuery() {
@@ -293,7 +324,7 @@ class WikiApp {
     try {
       const res = await AppAPI.RunCommand({ command: cmd, confirmed: !!confirmed });
       if (res?.needsConfirm) {
-        this.confirm = { command: cmd, reasons: res.reasons || [] };
+        this.confirm = { command: cmd, reasons: res.reasons || [], kind: 'command' };
         this.paintWiki();
         return;
       }
@@ -307,26 +338,193 @@ class WikiApp {
     }
   }
 
-  async addToScript(cmd) {
-    if (!cmd || !hasWails()) return;
+  async runScript(body, confirmed) {
+    if (!hasWails()) return;
+    const command = body || this.draft.body || '';
     try {
-      const draft = await AppAPI.AddToScript(cmd);
-      this.draftCount = draft?.count || 0;
-      this.paintBuilder();
-      this.showToast(fmt(uk.toastScriptAdded, { n: this.draftCount }));
+      const res = await AppAPI.RunScript({ command, confirmed: !!confirmed });
+      if (res?.needsConfirm) {
+        this.confirm = { command, reasons: res.reasons || [], kind: 'script' };
+        this.paintWiki();
+        return;
+      }
+      if (res?.started) {
+        this.showToast(uk.toastRunStarted);
+      }
     } catch (err) {
       this.showToast(`${uk.statusError}: ${err?.message || err}`);
     }
+  }
+
+  async addToScript(cmd) {
+    if (!cmd || !hasWails()) return;
+    try {
+      if (this.editorBody != null) {
+        await AppAPI.SetScriptBody(this.editorBody);
+      }
+      const draft = await AppAPI.AddToScript(cmd);
+      this.applyDraft(draft);
+      this.showToast(fmt(uk.toastScriptAdded, { n: this.draft.count }));
+    } catch (err) {
+      this.showToast(`${uk.statusError}: ${err?.message || err}`);
+    }
+  }
+
+  applyDraft(draft) {
+    this.draft = draft || { lines: [], count: 0, body: '' };
+    this.editorBody = this.draft.body || '';
+    this.paintBuilder();
   }
 
   async refreshDraft() {
     if (!hasWails()) return;
     try {
       const draft = await AppAPI.ScriptDraft();
-      this.draftCount = draft?.count || 0;
+      this.applyDraft(draft);
+    } catch {
+      // ignore
+    }
+  }
+
+  async refreshSavedScripts() {
+    if (!hasWails()) return;
+    try {
+      const list = await AppAPI.ListCustomScripts();
+      this.savedScripts = Array.isArray(list) ? list : [];
       this.paintBuilder();
     } catch {
       // ignore
+    }
+  }
+
+  async commitEditor(body) {
+    if (!hasWails()) return;
+    try {
+      const draft = await AppAPI.SetScriptBody(body);
+      this.applyDraft(draft);
+    } catch (err) {
+      this.showToast(`${uk.statusError}: ${err?.message || err}`);
+    }
+  }
+
+  async moveLine(index, dir) {
+    if (!hasWails()) return;
+    try {
+      const draft = await AppAPI.MoveScriptLine(index, dir);
+      this.applyDraft(draft);
+    } catch (err) {
+      this.showToast(`${uk.statusError}: ${err?.message || err}`);
+    }
+  }
+
+  async removeLine(index) {
+    if (!hasWails()) return;
+    try {
+      const draft = await AppAPI.RemoveScriptLine(index);
+      this.applyDraft(draft);
+    } catch (err) {
+      this.showToast(`${uk.statusError}: ${err?.message || err}`);
+    }
+  }
+
+  async reorderLines(from, to) {
+    if (!hasWails() || from === to) return;
+    const lines = [...(this.draft.lines || [])];
+    if (from < 0 || from >= lines.length || to < 0 || to >= lines.length) return;
+    const [item] = lines.splice(from, 1);
+    lines.splice(to, 0, item);
+    const body = `${this.draft.shebang || '#!/usr/bin/env bash'}\n${lines.join('\n')}\n`;
+    await this.commitEditor(body);
+  }
+
+  async clearDraft() {
+    if (!hasWails()) return;
+    this.savedScriptId = 0;
+    const draft = await AppAPI.ClearScriptDraft();
+    this.applyDraft(draft);
+  }
+
+  async exportScript(body) {
+    if (!hasWails()) return;
+    try {
+      const path = await AppAPI.ExportScriptDialog(body || this.draft.body || '');
+      if (path) this.showToast(fmt(uk.toastScriptExported, { path }));
+    } catch (err) {
+      this.showToast(`${uk.statusError}: ${err?.message || err}`);
+    }
+  }
+
+  async saveScript(body) {
+    if (!hasWails()) return;
+    const name = window.prompt(uk.builderSavePrompt, uk.builderSaveDefault);
+    if (name == null) return;
+    const trimmed = name.trim();
+    if (!trimmed) {
+      this.showToast(uk.builderSaveValidation);
+      return;
+    }
+    try {
+      const cs = await AppAPI.SaveCustomScript(this.savedScriptId || 0, {
+        name: trimmed,
+        scriptBody: body || this.draft.body || '',
+      });
+      this.savedScriptId = cs?.id || 0;
+      await this.refreshSavedScripts();
+      this.showToast(uk.toastScriptSaved);
+    } catch (err) {
+      this.showToast(`${uk.statusError}: ${err?.message || err}`);
+    }
+  }
+
+  async loadSavedScript(id) {
+    if (!hasWails()) return;
+    try {
+      const draft = await AppAPI.LoadCustomScript(id);
+      this.savedScriptId = id;
+      this.applyDraft(draft);
+      this.showToast(uk.toastScriptLoaded);
+    } catch (err) {
+      this.showToast(`${uk.statusError}: ${err?.message || err}`);
+    }
+  }
+
+  async deleteSavedScript(id) {
+    if (!hasWails()) return;
+    if (!window.confirm(uk.builderDeleteConfirm)) return;
+    try {
+      await AppAPI.DeleteCustomScript(id);
+      if (this.savedScriptId === id) this.savedScriptId = 0;
+      await this.refreshSavedScripts();
+      this.showToast(uk.toastScriptDeleted);
+    } catch (err) {
+      this.showToast(`${uk.statusError}: ${err?.message || err}`);
+    }
+  }
+
+  async exportBackup() {
+    if (!hasWails()) return;
+    try {
+      const path = await AppAPI.ExportBackupDialog();
+      if (path) this.showToast(fmt(uk.toastBackupExported, { path }));
+    } catch (err) {
+      this.showToast(`${uk.statusError}: ${err?.message || err}`);
+    }
+  }
+
+  async importBackup() {
+    if (!hasWails()) return;
+    try {
+      const res = await AppAPI.ImportBackupDialog();
+      if (!res) return;
+      this.showToast(fmt(uk.toastBackupImported, {
+        sn: res.snippetsAdded || 0,
+        sc: res.scriptsAdded || 0,
+      }));
+      await this.refreshSavedScripts();
+      await this.reloadList();
+      if (this.selected) await this.reloadDetail();
+    } catch (err) {
+      this.showToast(`${uk.statusError}: ${err?.message || err}`);
     }
   }
 

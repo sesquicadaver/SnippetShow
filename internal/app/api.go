@@ -1,5 +1,5 @@
 // Package app exposes Wails-facing application services.
-// Phase 2: Read-Only Wiki UI bindings on top of Core & DB (P1-16 + P2).
+// Phase 4: Script Builder, JSON backup, polish on top of Wiki + Snippets.
 package app
 
 import (
@@ -132,7 +132,7 @@ func (a *API) Info() Info {
 		Module:   "snippetshow",
 		DBPath:   db.DefaultPath,
 		UILocale: "uk",
-		Phase:    "3",
+		Phase:    "4",
 		Frontend: "vanilla-js",
 		License:  "MIT",
 	}
@@ -140,7 +140,7 @@ func (a *API) Info() Info {
 
 // PhaseStatus is a human-readable build stage marker for the shell UI.
 func (a *API) PhaseStatus() string {
-	return "Фаза 3: User Snippets & Actions (CRUD, Copy, Run + safety)"
+	return "Фаза 4: Script Builder, JSON backup, збірка Ubuntu/Arch/Fedora"
 }
 
 func (a *API) ensure() error {

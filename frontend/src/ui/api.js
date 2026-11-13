@@ -38,6 +38,22 @@ export const AppAPI = {
   RunCommand: (req) => call('RunCommand', req),
   AddToScript: (command) => call('AddToScript', command),
   ScriptDraft: () => call('ScriptDraft'),
+  MoveScriptLine: (index, direction) => call('MoveScriptLine', index, direction),
+  RemoveScriptLine: (index) => call('RemoveScriptLine', index),
+  ClearScriptDraft: () => call('ClearScriptDraft'),
+  SetScriptBody: (body) => call('SetScriptBody', body),
+  GenerateScript: () => call('GenerateScript'),
+  ExportScriptFile: (path, body) => call('ExportScriptFile', path, body),
+  ExportScriptDialog: (body) => call('ExportScriptDialog', body),
+  RunScript: (req) => call('RunScript', req),
+  ListCustomScripts: () => call('ListCustomScripts'),
+  SaveCustomScript: (id, inPayload) => call('SaveCustomScript', id, inPayload),
+  LoadCustomScript: (id) => call('LoadCustomScript', id),
+  DeleteCustomScript: (id) => call('DeleteCustomScript', id),
+  ExportBackup: (path) => call('ExportBackup', path),
+  ImportBackup: (path) => call('ImportBackup', path),
+  ExportBackupDialog: () => call('ExportBackupDialog'),
+  ImportBackupDialog: () => call('ImportBackupDialog'),
 };
 
 /**

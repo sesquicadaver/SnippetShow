@@ -27,15 +27,15 @@
 | STUB-11 | `frontend` Wiki actions | Copy / Run / + Script | done |
 | STUB-12 | `frontend` «Мої команди» | CRUD сніпетів + FTS sync | done |
 
-## Відкриті заглушки (наступні фази)
+## Закрито у Phase 4
 
-| ID | Модуль | Що | Цільова фаза |
-|----|--------|----|--------------|
-| STUB-08 | `internal/backup` | `Export`, `Import` | 4 |
-| STUB-09 | `internal/scriptbuilder` | повний UI reorder/export/save (draft Add уже є) | 4 |
-| STUB-13 | `frontend` Script Builder | права панель — placeholder фази 4 (лічильник draft є) | 4 |
+| ID | Модуль | Що | Статус |
+|----|--------|----|--------|
+| STUB-08 | `internal/backup` | `Export` / `Import` (`version: 1`, merge) | done |
+| STUB-09 | `internal/scriptbuilder` | reorder / Generate / WriteExecutable / ApplyBody | done |
+| STUB-13 | `frontend` Script Builder | права панель, editor, save/export/run, DnD | done |
 
-## Відомі обмеження Core / Wiki
+## Відомі обмеження Core / Wiki / Builder
 
 | ID | Опис | Нотатка |
 |----|------|---------|
@@ -45,6 +45,9 @@
 | UI-01 | Повний sync apt-каталогу може бути довгим на великих дзеркалах | progress + окрема кнопка «Підвантажити каталог» |
 | UI-02 | Copy залежить від Wails clipboard або наявності wl-copy/xclip/xsel | toast з помилкою якщо жоден шлях недоступний |
 | UI-03 | Run потребує встановленого терміналу з D7 | діалог/toast при ErrNotFound |
+| UI-04 | Bash highlight у Builder — мінімальний (shebang/comments/strings/keywords) | без важкої editor-lib (NFR RAM) |
+| DIST-01 | openSUSE — best-effort через rpm/dnf-подібні шляхи; не цільовий smoke | задокументовано в dist-notes |
+| NFR-01 | Idle RSS webview часто > 80 МБ на сучасних webkit2gtk | виміри в `docs/NFR_NOTES.md`; Vanilla UI без важких deps |
 
 ## Відкриті дефекти середовища
 

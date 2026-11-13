@@ -27,6 +27,8 @@ func TestAnalyzeMatrix(t *testing.T) {
 		{"rm -r /tmp/only-recursive", false, ""},
 		{"rm -f /tmp/only-force", false, ""},
 		{"ffmpeg -i in.mp4 out.mkv", false, ""},
+		{"#!/usr/bin/env bash\nsudo true\n", true, "sudo"},
+		{"#!/usr/bin/env bash\necho hi\nrm -rf /tmp/x\n", true, "rm -rf"},
 	}
 	for _, tc := range cases {
 		r := Analyze(tc.cmd)
