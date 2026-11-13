@@ -10,7 +10,7 @@ function fallbackInfo() {
   return {
     name: uk.brand,
     subtitle: uk.subtitle,
-    phase: '2',
+    phase: '3',
     uiLocale: 'uk',
     frontend: 'vanilla-js',
     dbPath: '~/.local/share/linux-cmd-wiki/wiki.db',

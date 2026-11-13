@@ -252,3 +252,43 @@ func TestUpsertResetsManParsedOnVersionChange(t *testing.T) {
 		t.Fatalf("version=%q", p.Version)
 	}
 }
+
+func TestSnippetCRUDAndValidation(t *testing.T) {
+	s := openTemp(t)
+	id, err := s.UpsertProgram(Program{Name: "ffmpeg", Summary: "video", IsInstalled: true}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.CreateUserSnippet(id, "", "ffmpeg -i a b", ""); err == nil {
+		t.Fatal("empty title should fail")
+	}
+	if _, err := s.CreateUserSnippet(id, "encode", "  ", ""); err == nil {
+		t.Fatal("empty command should fail")
+	}
+	sn, err := s.CreateUserSnippet(id, "encode h265", "ffmpeg -i in.mp4 -c:v libx265 out.mkv", "video h265")
+	if err != nil {
+		t.Fatal(err)
+	}
+	list, err := s.ListUserSnippets(id)
+	if err != nil || len(list) != 1 {
+		t.Fatalf("list=%v err=%v", list, err)
+	}
+	updated, err := s.UpdateUserSnippet(sn.ID, "encode av1", "ffmpeg -i in.mp4 -c:v libsvtav1 out.mkv", "av1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Title != "encode av1" || updated.Tags != "av1" {
+		t.Fatalf("%+v", updated)
+	}
+	hits, err := s.Search("av1")
+	if err != nil || len(hits) == 0 {
+		t.Fatalf("fts after update: %+v err=%v", hits, err)
+	}
+	if err := s.DeleteUserSnippet(sn.ID); err != nil {
+		t.Fatal(err)
+	}
+	list, err = s.ListUserSnippets(id)
+	if err != nil || len(list) != 0 {
+		t.Fatalf("after delete list=%v err=%v", list, err)
+	}
+}

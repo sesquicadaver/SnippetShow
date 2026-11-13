@@ -22,7 +22,7 @@ func TestInfoDecisions(t *testing.T) {
 	if info.Frontend != "vanilla-js" {
 		t.Fatalf("frontend: got %q", info.Frontend)
 	}
-	if info.Phase != "2" {
+	if info.Phase != "3" {
 		t.Fatalf("phase: got %q", info.Phase)
 	}
 }
@@ -151,6 +151,62 @@ func TestUpsertCatalogDoesNotDemoteInstalled(t *testing.T) {
 	h, err := store.GetProgramByName("htop")
 	if err != nil || h.IsInstalled || h.Summary != "process viewer" {
 		t.Fatalf("%+v err=%v", h, err)
+	}
+}
+
+func TestSnippetAPIAndScriptDraft(t *testing.T) {
+	store, err := db.Open(filepath.Join(t.TempDir(), "wiki.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	id, err := store.UpsertProgram(db.Program{Name: "ffmpeg", Summary: "video", IsInstalled: true}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	api := NewWithStore(store)
+	if _, err := api.CreateSnippet(SnippetInput{ProgramID: id, Title: "", Command: "x"}); err == nil {
+		t.Fatal("validation expected")
+	}
+	sn, err := api.CreateSnippet(SnippetInput{
+		ProgramID: id, Title: "encode", Command: "ffmpeg -i a b", Tags: "video",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	detail, err := api.GetProgram("ffmpeg", false)
+	if err != nil || len(detail.Snippets) != 1 {
+		t.Fatalf("detail=%+v err=%v", detail, err)
+	}
+	_, err = api.UpdateSnippet(sn.ID, SnippetInput{Title: "encode2", Command: "ffmpeg -y -i a b", Tags: "t"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	safety := api.AnalyzeCommand("sudo rm -rf /")
+	if !safety.Dangerous || len(safety.Reasons) < 2 {
+		t.Fatalf("%+v", safety)
+	}
+	run, err := api.RunCommand(RunRequest{Command: "sudo true", Confirmed: false})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !run.NeedsConfirm || run.Started {
+		t.Fatalf("%+v", run)
+	}
+	draft, err := api.AddToScript("ffmpeg -i a b")
+	if err != nil || draft.Count != 1 {
+		t.Fatalf("%+v err=%v", draft, err)
+	}
+	draft2, err := api.AddToScript("echo done")
+	if err != nil || draft2.Count != 2 {
+		t.Fatalf("draft must persist: %+v", draft2)
+	}
+	if err := api.DeleteSnippet(sn.ID); err != nil {
+		t.Fatal(err)
+	}
+	list, err := api.ListSnippets(id)
+	if err != nil || len(list) != 0 {
+		t.Fatalf("%v err=%v", list, err)
 	}
 }
 

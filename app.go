@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -10,7 +12,7 @@ import (
 )
 
 // App is the Wails-bound application root.
-// Phase 2: Read-Only Wiki UI bindings.
+// Phase 3: User Snippets & Actions.
 type App struct {
 	ctx context.Context
 	api *appapi.API
@@ -97,4 +99,57 @@ func (a *App) DetectPackageManager() (string, error) {
 // InstallCommandFor returns a suggested install command for a package name.
 func (a *App) InstallCommandFor(pkg string) (string, error) {
 	return a.api.InstallCommandFor(pkg)
+}
+
+// ListSnippets returns user snippets for a program (P3-1).
+func (a *App) ListSnippets(programID int64) ([]appapi.SnippetDTO, error) {
+	return a.api.ListSnippets(programID)
+}
+
+// CreateSnippet inserts a user snippet (P3-2).
+func (a *App) CreateSnippet(in appapi.SnippetInput) (*appapi.SnippetDTO, error) {
+	return a.api.CreateSnippet(in)
+}
+
+// UpdateSnippet edits a user snippet (P3-3).
+func (a *App) UpdateSnippet(id int64, in appapi.SnippetInput) (*appapi.SnippetDTO, error) {
+	return a.api.UpdateSnippet(id, in)
+}
+
+// DeleteSnippet removes a user snippet (P3-3).
+func (a *App) DeleteSnippet(id int64) error {
+	return a.api.DeleteSnippet(id)
+}
+
+// AnalyzeCommand returns safety analysis for the confirm dialog (P3-9).
+func (a *App) AnalyzeCommand(command string) appapi.SafetyDTO {
+	return a.api.AnalyzeCommand(command)
+}
+
+// CopyText copies text via Wails clipboard first, then X11/Wayland CLI (P3-5).
+func (a *App) CopyText(text string) (appapi.CopyResponse, error) {
+	if strings.TrimSpace(text) == "" {
+		return appapi.CopyResponse{}, fmt.Errorf("немає тексту для копіювання")
+	}
+	if a.ctx != nil {
+		if err := runtime.ClipboardSetText(a.ctx, text); err == nil {
+			return appapi.CopyResponse{OK: true, Message: "Скопійовано"}, nil
+		}
+	}
+	return a.api.CopyText(text)
+}
+
+// RunCommand launches the command in a system terminal with safety gate (P3-8…P3-10).
+func (a *App) RunCommand(req appapi.RunRequest) (appapi.RunResponse, error) {
+	return a.api.RunCommand(req)
+}
+
+// AddToScript appends a line to the in-memory Script Builder draft (P3-11).
+func (a *App) AddToScript(command string) (appapi.ScriptDraftDTO, error) {
+	return a.api.AddToScript(command)
+}
+
+// ScriptDraft returns the current draft snapshot.
+func (a *App) ScriptDraft() appapi.ScriptDraftDTO {
+	return a.api.ScriptDraft()
 }

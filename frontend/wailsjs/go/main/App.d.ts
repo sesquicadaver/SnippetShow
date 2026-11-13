@@ -3,7 +3,17 @@
 import {app} from '../models';
 import {index} from '../models';
 
+export function AddToScript(arg1:string):Promise<app.ScriptDraftDTO>;
+
+export function AnalyzeCommand(arg1:string):Promise<app.SafetyDTO>;
+
 export function AppInfo():Promise<app.Info>;
+
+export function CopyText(arg1:string):Promise<app.CopyResponse>;
+
+export function CreateSnippet(arg1:app.SnippetInput):Promise<app.SnippetDTO>;
+
+export function DeleteSnippet(arg1:number):Promise<void>;
 
 export function DetectPackageManager():Promise<string>;
 
@@ -19,9 +29,15 @@ export function ListInstalled():Promise<Array<app.ProgramDTO>>;
 
 export function ListPrograms(arg1:app.ListQuery):Promise<Array<app.ProgramDTO>>;
 
+export function ListSnippets(arg1:number):Promise<Array<app.SnippetDTO>>;
+
 export function PhaseStatus():Promise<string>;
 
+export function RunCommand(arg1:app.RunRequest):Promise<app.RunResponse>;
+
 export function ScanInstalled():Promise<index.UpdateResult>;
+
+export function ScriptDraft():Promise<app.ScriptDraftDTO>;
 
 export function Search(arg1:string):Promise<Array<app.SearchResultDTO>>;
 
@@ -30,3 +46,5 @@ export function SearchPrograms(arg1:app.ListQuery):Promise<Array<app.SearchResul
 export function SyncRepoCatalog():Promise<index.CatalogSyncResult>;
 
 export function UpdateIndex():Promise<index.UpdateResult>;
+
+export function UpdateSnippet(arg1:number,arg2:app.SnippetInput):Promise<app.SnippetDTO>;
