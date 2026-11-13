@@ -193,6 +193,21 @@ func TestSnippetAPIAndScriptDraft(t *testing.T) {
 	if !run.NeedsConfirm || run.Started {
 		t.Fatalf("%+v", run)
 	}
+	// H2: path-prefixed / env wrappers must still gate Run (NeedsConfirm).
+	bypass, err := api.RunCommand(RunRequest{Command: "/usr/bin/sudo true", Confirmed: false})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bypass.NeedsConfirm || bypass.Started {
+		t.Fatalf("path sudo: %+v", bypass)
+	}
+	envBypass, err := api.RunCommand(RunRequest{Command: "env sudo true", Confirmed: false})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !envBypass.NeedsConfirm || envBypass.Started {
+		t.Fatalf("env sudo: %+v", envBypass)
+	}
 	draft, err := api.AddToScript("ffmpeg -i a b")
 	if err != nil || draft.Count != 1 {
 		t.Fatalf("%+v err=%v", draft, err)

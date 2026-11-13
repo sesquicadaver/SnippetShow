@@ -14,7 +14,7 @@
 | §4.1–4.2 / P2 | Toolbar + лівий навігатор (режими, FTS, A–Z, оновлення) | `frontend/src/ui/{toolbar,navigator,shell}.js`, `ListPrograms` | `api_test.go` (фільтри), UI smoke | done |
 | §4.3 / P2–P3 | Center Wiki man + Raw Man + install hint + «Мої команди» CRUD | `frontend/src/ui/wiki.js`, `GetProgram`, snippets API | `api_test.go`, `db_test.go` | done |
 | §4.3 | Clipboard X11/Wayland (+ Wails) | `internal/clipboard`, `App.CopyText` | `clipboard_test.go` | done |
-| §4.3 / §5 | Terminal Run + safety confirm | `internal/terminal`, `internal/safety`, `App.RunCommand` | `terminal_test.go`, `safety_test.go`, `api_test.go` | done |
+| §4.3 / §5 | Terminal Run + safety confirm (command-word + path/`env` wrappers) | `internal/terminal`, `internal/safety`, `App.RunCommand` | `terminal_test.go`, `safety_test.go`, `api_test.go` | done |
 | §4.3 P3-11 / §4.4 | + Script → draft + Script Builder UI (reorder, editor, export, save) | `internal/scriptbuilder`, `frontend/src/ui/builder.js` | `scriptbuilder_test.go`, `api_test.go` | done |
 | §3 / P4-7 | `custom_scripts` CRUD | `internal/db/scripts.go`, `SaveCustomScript` | `db_test.go`, `api_test.go` | done |
 | §5 | JSON backup snippets/scripts (`version: 1`) | `internal/backup`, toolbar Export/Import | `backup_test.go`, `api_test.go` | done |

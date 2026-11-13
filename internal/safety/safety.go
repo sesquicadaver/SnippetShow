@@ -12,13 +12,21 @@ type Result struct {
 	Reasons   []string `json:"reasons"`
 }
 
+// Command-word detection: optional wrapper prefixes (env/command/nice/nohup) and
+// optional path directory prefix so /usr/bin/sudo and env sudo still confirm (H2).
+const (
+	cmdSep  = `(?:^|[;&|]|\|\||&&)`
+	cmdWrap = `(?:(?:env|command|nice|nohup)\s+)*`
+	cmdPath = `(?:\S*/)?`
+)
+
 var (
 	// (?m) so shebang-prefixed multi-line scripts still match line-leading commands.
-	reSudo = regexp.MustCompile(`(?im)(?:^|[;&|]|\|\||&&)\s*sudo\b`)
-	reDd   = regexp.MustCompile(`(?im)(?:^|[;&|]|\|\||&&)\s*dd\s+`)
-	reMkfs = regexp.MustCompile(`(?im)(?:^|[;&|]|\|\||&&)\s*mkfs(?:\.[a-z0-9]+)?\b`)
-	// rm may appear after sudo / env prefixes — match as a command word.
-	reRm = regexp.MustCompile(`(?im)(?:^|[;&|\s]|\|\||&&)rm\b([^;&|]*)`)
+	reSudo = regexp.MustCompile(`(?im)` + cmdSep + `\s*` + cmdWrap + cmdPath + `sudo\b`)
+	reDd   = regexp.MustCompile(`(?im)` + cmdSep + `\s*` + cmdWrap + cmdPath + `dd\s+`)
+	reMkfs = regexp.MustCompile(`(?im)` + cmdSep + `\s*` + cmdWrap + cmdPath + `mkfs(?:\.[a-z0-9]+)?\b`)
+	// rm may appear after sudo / whitespace / env prefixes — match as a command word.
+	reRm = regexp.MustCompile(`(?im)(?:^|[;&|\s]|\|\||&&)` + cmdWrap + cmdPath + `rm\b([^;&|]*)`)
 )
 
 // Analyze inspects a command for rm -rf / dd / mkfs / sudo patterns (and chained variants).

@@ -10,6 +10,7 @@ func TestAnalyzeMatrix(t *testing.T) {
 	}{
 		{"ls -la", false, ""},
 		{"echo sudo", false, ""},
+		{"echo ok", false, ""},
 		{"sudo apt update", true, "sudo"},
 		{"echo hi && sudo reboot", true, "sudo"},
 		{"dd if=/dev/zero of=/dev/sda", true, "dd"},
@@ -29,6 +30,19 @@ func TestAnalyzeMatrix(t *testing.T) {
 		{"ffmpeg -i in.mp4 out.mkv", false, ""},
 		{"#!/usr/bin/env bash\nsudo true\n", true, "sudo"},
 		{"#!/usr/bin/env bash\necho hi\nrm -rf /tmp/x\n", true, "rm -rf"},
+		// H2: path-prefixed and wrapper bypass matrix
+		{"/usr/bin/sudo apt update", true, "sudo"},
+		{"/bin/rm -rf /tmp/x", true, "rm -rf"},
+		{"true && /usr/bin/dd if=a of=b", true, "dd"},
+		{"env sudo apt update", true, "sudo"},
+		{"env /usr/bin/sudo true", true, "sudo"},
+		{"command sudo true", true, "sudo"},
+		{"nice sudo true", true, "sudo"},
+		{"nohup sudo true", true, "sudo"},
+		{"/sbin/mkfs.ext4 /dev/sdb1", true, "mkfs"},
+		{"env /bin/rm -rf /tmp/x", true, "rm -rf"},
+		{"echo /usr/bin/sudo", false, ""},
+		{"cat /home/user/sudoers.bak", false, ""},
 	}
 	for _, tc := range cases {
 		r := Analyze(tc.cmd)

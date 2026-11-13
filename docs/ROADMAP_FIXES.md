@@ -2,9 +2,20 @@
 
 Канонічна черга після MVP. Поки MVP не завершено — пункти нижче не блокують Phase 0–4, якщо не позначені як OPEN для Autopilot.
 
-## OPEN
+## OPEN (hotfix queue)
 
-_(порожньо після Phase 4 / v0.1 MVP)_
+| ID | Тема | Нотатка |
+|----|------|---------|
+| FIX-H1 | ParseOnUpdate + reparse on version change | ТЗ §2.3; увімкнути прапор + фон parse |
+| FIX-M1 | Підключити `ParseMany` у index (pool 4–8) | ТЗ §2.2; разом з H1 |
+| FIX-H3 | Script Builder: зберігати blank lines / editor fidelity | ТЗ §4.4; L7 shebang strip |
+| FIX-H4 | Catalog batch upsert / відкладений FTS | NFR / UX «Підвантажити каталог» |
+
+## DONE (hotfix)
+
+| ID | Тема | Нотатка |
+|----|------|---------|
+| FIX-H2 | Safety: path/env/command-word bypass | `/usr/bin/sudo`, `/bin/rm -rf`, `env sudo`, … → confirm |
 
 ## Backlog (після v0.1)
 
