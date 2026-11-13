@@ -10,9 +10,14 @@ yarn-error.log*
 
 # Go
 *.exe
+*.dll
 *.test
 *.out
 vendor/
+
+# Non-Linux Wails scaffolds (product is Linux-only)
+build/windows/
+build/darwin/
 
 # IDE / OS
 .idea/

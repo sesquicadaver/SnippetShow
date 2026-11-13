@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# build/build.sh — обгортка wails build для SnippetShow.
+# build/build.sh — Linux-only обгортка wails build для SnippetShow.
+# Windows/macOS scaffold (build/windows, build/darwin) навмисно відсутні: продукт лише для Linux.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

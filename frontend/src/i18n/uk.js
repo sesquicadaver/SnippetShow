@@ -2,8 +2,8 @@
 export const uk = {
   brand: 'SnippetShow',
   subtitle: 'Linux Command Wiki & Script Builder',
-  phaseShell: 'Каркас застосунку (фаза 0)',
-  phaseHint: 'Core, Wiki UI та Script Builder з’являться в наступних фазах.',
+  phaseShell: 'Core & DB (фаза 1)',
+  phaseHint: 'Wiki UI, сніпети та Script Builder — у наступних фазах.',
   loading: 'Завантаження…',
   dbPathLabel: 'Шлях БД',
   localeLabel: 'Мова UI',

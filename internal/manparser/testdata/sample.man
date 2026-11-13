@@ -1,0 +1,34 @@
+NAME
+       demo - demonstration utility for parser tests
+
+SYNOPSIS
+       demo [OPTION]... FILE
+
+DESCRIPTION
+       demo does things with files.
+
+OPTIONS
+       -a, --all
+              process all entries
+
+       -f, --file FILE
+              read FILE instead of stdin
+
+       --help display this help and exit
+
+       -v     verbose output
+
+COMMANDS
+       --list
+              list known items
+
+FLAGS
+       --dry-run
+              do not write changes
+
+ENVIRONMENT
+       DEMO_HOME
+              configuration directory
+
+SEE ALSO
+       demo(5)

@@ -4,12 +4,13 @@
 
 | ТЗ§ | Вимога (коротко) | Модуль | Тест | Статус |
 |-----|------------------|--------|------|--------|
-| §1 | Go 1.22+ / Wails v2 / SQLite modernc / ELF + webkit2gtk | `main.go`, `wails.json`, `go.mod` | `scripts/ci-local.sh`, CI workflow | partial (скелет Phase 0) |
-| §1 | Платформи Debian/Ubuntu, Arch, Fedora | docs у README | smoke Phase 4 | planned |
-| §2.1 | System Scanner (PM + PATH + repo catalog) | `internal/scanner` | `scanner_test.go` | stub |
-| §2.2 | Man Parser (whatis, raw, OPTIONS regex, pool) | `internal/manparser` | `manparser_test.go` | stub |
-| §2.3 | Incremental «Оновити індекс» | `internal/index` | `index_test.go` | stub |
-| §3 | SQLite schema + FTS5 path | `internal/db` | `db_test.go` | stub |
+| §1 | Go 1.22+ / Wails v2 / SQLite modernc / ELF + webkit2gtk | `main.go`, `wails.json`, `go.mod` | `scripts/ci-local.sh`, CI workflow | partial (скелет + Core) |
+| §1 | Платформи Debian/Ubuntu, Arch, Fedora (лише Linux) | README; без `build/windows`/`build/darwin` | smoke Phase 4 | planned |
+| §2.1 | System Scanner (PM + PATH + repo catalog) | `internal/scanner` | `scanner_test.go` | done |
+| §2.2 | Man Parser (whatis, raw, OPTIONS regex, pool) | `internal/manparser` | `manparser_test.go`, `testdata/sample.man` | done |
+| §2.3 | Incremental «Оновити індекс» | `internal/index` | `index_test.go` | done |
+| §3 | SQLite schema + FTS5 path | `internal/db` | `db_test.go` | done |
+| §2.3 / P1-16 | App API: ScanInstalled, UpdateIndex, GetProgram, Search | `internal/app`, `app.go` | `api_test.go` | done |
 | §4.1–4.2 | Toolbar + лівий навігатор | `frontend/src/ui` | UI smoke Phase 2 | planned |
 | §4.3 | Center Wiki + snippets/actions | frontend + `internal/app` | Phase 2–3 | planned |
 | §4.3 | Clipboard X11/Wayland | `internal/clipboard` | `clipboard_test.go` | stub |
