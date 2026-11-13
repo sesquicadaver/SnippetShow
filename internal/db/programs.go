@@ -64,15 +64,50 @@ FROM programs WHERE name = ?`, name)
 
 // ListPrograms returns programs, optionally only installed ones.
 func (s *Store) ListPrograms(installedOnly bool) ([]Program, error) {
+	return s.ListProgramsFiltered(ProgramFilter{InstalledOnly: installedOnly})
+}
+
+// ProgramFilter selects programs for the Wiki navigator (Phase 2).
+type ProgramFilter struct {
+	InstalledOnly bool
+	// Letter is "", "all", a single A–Z letter, or "0-9" for digit-leading names.
+	Letter string
+	Limit  int
+}
+
+// ListProgramsFiltered returns programs matching install + alphabet filters.
+func (s *Store) ListProgramsFiltered(f ProgramFilter) ([]Program, error) {
 	q := `
 SELECT id, name, COALESCE(package_name,''), COALESCE(summary,''), COALESCE(version,''),
        is_installed, man_parsed
 FROM programs`
-	if installedOnly {
-		q += ` WHERE is_installed = 1`
+	var args []any
+	var where []string
+	if f.InstalledOnly {
+		where = append(where, `is_installed = 1`)
+	}
+	letter := strings.TrimSpace(f.Letter)
+	switch {
+	case letter == "" || strings.EqualFold(letter, "all"):
+		// no letter filter
+	case letter == "0-9":
+		where = append(where, `substr(name, 1, 1) GLOB '[0-9]'`)
+	default:
+		ch := strings.ToLower(letter)
+		if len([]rune(ch)) == 1 {
+			where = append(where, `lower(substr(name, 1, 1)) = ?`)
+			args = append(args, ch)
+		}
+	}
+	if len(where) > 0 {
+		q += ` WHERE ` + strings.Join(where, ` AND `)
 	}
 	q += ` ORDER BY name COLLATE NOCASE`
-	rows, err := s.db.Query(q)
+	if f.Limit > 0 {
+		q += ` LIMIT ?`
+		args = append(args, f.Limit)
+	}
+	rows, err := s.db.Query(q, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -86,6 +121,52 @@ FROM programs`
 		out = append(out, *p)
 	}
 	return out, rows.Err()
+}
+
+// UpsertCatalogProgram inserts a repo-catalog package without demoting installed rows.
+// Existing installed programs keep is_installed=1; summary is filled only when empty.
+func (s *Store) UpsertCatalogProgram(name, packageName, summary string) (int64, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return 0, fmt.Errorf("db: empty catalog program name")
+	}
+	existing, err := s.GetProgramByName(name)
+	if err == nil {
+		if existing.Summary == "" && strings.TrimSpace(summary) != "" {
+			_, err = s.UpsertProgram(Program{
+				Name:        existing.Name,
+				PackageName: firstNonEmpty(existing.PackageName, packageName),
+				Summary:     summary,
+				Version:     existing.Version,
+				IsInstalled: existing.IsInstalled,
+				ManParsed:   existing.ManParsed,
+			}, false)
+			return existing.ID, err
+		}
+		return existing.ID, nil
+	}
+	if err != sql.ErrNoRows {
+		return 0, err
+	}
+	pkg := packageName
+	if pkg == "" {
+		pkg = name
+	}
+	return s.UpsertProgram(Program{
+		Name:        name,
+		PackageName: pkg,
+		Summary:     summary,
+		IsInstalled: false,
+	}, false)
+}
+
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if strings.TrimSpace(v) != "" {
+			return strings.TrimSpace(v)
+		}
+	}
+	return ""
 }
 
 // MarkNotInstalledExcept sets is_installed=0 for names not in keepNames.

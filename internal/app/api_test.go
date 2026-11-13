@@ -22,7 +22,7 @@ func TestInfoDecisions(t *testing.T) {
 	if info.Frontend != "vanilla-js" {
 		t.Fatalf("frontend: got %q", info.Frontend)
 	}
-	if info.Phase != "1" {
+	if info.Phase != "2" {
 		t.Fatalf("phase: got %q", info.Phase)
 	}
 }
@@ -77,5 +77,104 @@ func TestSearchAndGetProgramAPI(t *testing.T) {
 	list, err := api.ListInstalled()
 	if err != nil || len(list) != 1 {
 		t.Fatalf("list=%v err=%v", list, err)
+	}
+}
+
+func TestListProgramsFilters(t *testing.T) {
+	store, err := db.Open(filepath.Join(t.TempDir(), "wiki.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+
+	for _, p := range []db.Program{
+		{Name: "ffmpeg", Summary: "video", IsInstalled: true},
+		{Name: "curl", Summary: "http", IsInstalled: true},
+		{Name: "figlet", Summary: "banners", IsInstalled: false},
+		{Name: "7z", Summary: "archive", IsInstalled: true},
+	} {
+		if _, err := store.UpsertProgram(p, false); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	api := NewWithStore(store)
+	installed, err := api.ListPrograms(ListQuery{Mode: "installed"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(installed) != 3 {
+		t.Fatalf("installed=%d", len(installed))
+	}
+	letterF, err := api.ListPrograms(ListQuery{Mode: "all", Letter: "f"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(letterF) != 2 { // ffmpeg, figlet
+		t.Fatalf("letter f: %+v", letterF)
+	}
+	digits, err := api.ListPrograms(ListQuery{Mode: "installed", Letter: "0-9"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(digits) != 1 || digits[0].Name != "7z" {
+		t.Fatalf("digits: %+v", digits)
+	}
+	fts, err := api.ListPrograms(ListQuery{Mode: "installed", Query: "video"})
+	if err != nil || len(fts) != 1 || fts[0].Name != "ffmpeg" {
+		t.Fatalf("fts: %+v err=%v", fts, err)
+	}
+}
+
+func TestUpsertCatalogDoesNotDemoteInstalled(t *testing.T) {
+	store, err := db.Open(filepath.Join(t.TempDir(), "wiki.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	if _, err := store.UpsertProgram(db.Program{Name: "curl", Summary: "http", IsInstalled: true}, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.UpsertCatalogProgram("curl", "curl", "from repo"); err != nil {
+		t.Fatal(err)
+	}
+	p, err := store.GetProgramByName("curl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !p.IsInstalled {
+		t.Fatal("catalog upsert demoted installed program")
+	}
+	if _, err := store.UpsertCatalogProgram("htop", "htop", "process viewer"); err != nil {
+		t.Fatal(err)
+	}
+	h, err := store.GetProgramByName("htop")
+	if err != nil || h.IsInstalled || h.Summary != "process viewer" {
+		t.Fatalf("%+v err=%v", h, err)
+	}
+}
+
+func TestGetProgramInstallHintForUninstalled(t *testing.T) {
+	store, err := db.Open(filepath.Join(t.TempDir(), "wiki.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	if _, err := store.UpsertProgram(db.Program{
+		Name: "figlet", PackageName: "figlet", Summary: "banners", IsInstalled: false,
+	}, false); err != nil {
+		t.Fatal(err)
+	}
+	api := NewWithStore(store)
+	detail, err := api.GetProgram("figlet", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if detail.Program.IsInstalled {
+		t.Fatal("expected uninstalled")
+	}
+	// InstallCommand may be empty if PM undetectable in CI; do not require it.
+	if len(detail.Commands) != 0 {
+		t.Fatalf("D6: unexpected man cmds for uninstalled: %+v", detail.Commands)
 	}
 }
