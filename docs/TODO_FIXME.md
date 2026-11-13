@@ -40,8 +40,8 @@
 | ID | Опис | Статус |
 |----|------|--------|
 | H2 | Safety bypass path-prefix / `env` wrappers (`/usr/bin/sudo`, `/bin/rm -rf`, …) | **done** — command-word + wrap/path у `internal/safety` |
-| H1 | `ParseOnUpdate` не вмикається → немає reparse man при зміні версії | OPEN |
-| M1 | `ParseMany` pool не підключений в index | OPEN (разом з H1) |
+| H1 | `ParseOnUpdate` не вмикається → немає reparse man при зміні версії | **done** — `index.New` вмикає прапор; FirstRun без mass parse |
+| M1 | `ParseMany` pool не підключений в index | **done** — `parseMany` у UpdateIndex |
 | H3 | Script Builder стирає порожні рядки на commit | OPEN |
 | H4 | Catalog sync: per-package upsert + FTS → зависання | OPEN |
 

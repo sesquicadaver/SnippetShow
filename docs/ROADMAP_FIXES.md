@@ -6,8 +6,6 @@
 
 | ID | Тема | Нотатка |
 |----|------|---------|
-| FIX-H1 | ParseOnUpdate + reparse on version change | ТЗ §2.3; увімкнути прапор + фон parse |
-| FIX-M1 | Підключити `ParseMany` у index (pool 4–8) | ТЗ §2.2; разом з H1 |
 | FIX-H3 | Script Builder: зберігати blank lines / editor fidelity | ТЗ §4.4; L7 shebang strip |
 | FIX-H4 | Catalog batch upsert / відкладений FTS | NFR / UX «Підвантажити каталог» |
 
@@ -16,6 +14,8 @@
 | ID | Тема | Нотатка |
 |----|------|---------|
 | FIX-H2 | Safety: path/env/command-word bypass | `/usr/bin/sudo`, `/bin/rm -rf`, `env sudo`, … → confirm |
+| FIX-H1 | ParseOnUpdate + reparse on version change | `index.New` → `ParseOnUpdate: true` |
+| FIX-M1 | `ParseMany` pool у index UpdateIndex | Workers 4–8; progress phase `parse` |
 
 ## Backlog (після v0.1)
 
