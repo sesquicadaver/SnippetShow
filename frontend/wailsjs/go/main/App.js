@@ -10,6 +10,14 @@ export function AnalyzeCommand(arg1) {
   return window['go']['main']['App']['AnalyzeCommand'](arg1);
 }
 
+export function CancelIndex() {
+  return window['go']['main']['App']['CancelIndex']();
+}
+
+export function IndexBusy() {
+  return window['go']['main']['App']['IndexBusy']();
+}
+
 export function AppInfo() {
   return window['go']['main']['App']['AppInfo']();
 }
@@ -108,6 +116,10 @@ export function MoveScriptLine(arg1, arg2) {
 
 export function PhaseStatus() {
   return window['go']['main']['App']['PhaseStatus']();
+}
+
+export function RemoveFromScript(arg1) {
+  return window['go']['main']['App']['RemoveFromScript'](arg1);
 }
 
 export function RemoveScriptLine(arg1) {

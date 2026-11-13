@@ -16,6 +16,7 @@ const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
  *   onLetter: (letter:string)=>void,
  *   onQuery: (query:string)=>void,
  *   onUpdate: ()=>void,
+ *   onCancel: ()=>void,
  *   onSyncCatalog: ()=>void,
  *   onExportBackup: ()=>void,
  *   onImportBackup: ()=>void,
@@ -51,6 +52,10 @@ export function renderToolbar(host, state) {
         <button type="button" class="btn btn-primary" data-action="update" ${state.busy ? 'disabled' : ''}>
           ${esc(state.busy ? uk.updating : uk.updateIndex)}
         </button>
+        ${state.busy ? `
+        <button type="button" class="btn btn-danger" data-action="cancel" title="${esc(uk.cancelIndex)}">
+          ${esc(uk.cancelIndex)}
+        </button>` : ''}
         <button type="button" class="btn" data-action="catalog" ${state.busy ? 'disabled' : ''} title="${esc(uk.modeAll)}">
           ${esc(uk.syncCatalog)}
         </button>
@@ -83,6 +88,7 @@ export function renderToolbar(host, state) {
   const search = host.querySelector('.search-input');
   search.addEventListener('input', () => state.onQuery(search.value));
   host.querySelector('[data-action="update"]').addEventListener('click', () => state.onUpdate());
+  host.querySelector('[data-action="cancel"]')?.addEventListener('click', () => state.onCancel?.());
   host.querySelector('[data-action="catalog"]').addEventListener('click', () => state.onSyncCatalog());
   host.querySelector('[data-action="export-backup"]')?.addEventListener('click', () => state.onExportBackup?.());
   host.querySelector('[data-action="import-backup"]')?.addEventListener('click', () => state.onImportBackup?.());

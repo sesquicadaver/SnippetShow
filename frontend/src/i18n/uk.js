@@ -13,6 +13,8 @@ export const uk = {
   alphabetDigits: '0–9',
   updateIndex: 'Оновити індекс',
   updating: 'Оновлення…',
+  cancelIndex: 'Скасувати',
+  statusCancelled: 'Скасовано',
   syncCatalog: 'Підвантажити каталог',
   exportBackup: 'Експорт JSON',
   importBackup: 'Імпорт JSON',
@@ -22,7 +24,9 @@ export const uk = {
   statusCacheEmpty: 'Кеш пакетів порожній',
   statusError: 'Помилка',
   statusParsing: 'Парсинг man…',
+  statusParseWarning: 'Man не розпарсено: {msg}',
   statusLoadingList: 'Завантаження списку…',
+  toastScriptRemoved: 'Прибрано зі скрипту ({n})',
 
   colName: 'Назва',
   colSummary: 'Короткий опис',

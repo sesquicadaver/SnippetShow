@@ -1,11 +1,14 @@
 package app
 
 import (
+	"context"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"snippetshow/internal/db"
+	"snippetshow/internal/manparser"
 )
 
 func TestInfoDecisions(t *testing.T) {
@@ -326,5 +329,156 @@ func TestGetProgramInstallHintForUninstalled(t *testing.T) {
 	// InstallCommand may be empty if PM undetectable in CI; do not require it.
 	if len(detail.Commands) != 0 {
 		t.Fatalf("D6: unexpected man cmds for uninstalled: %+v", detail.Commands)
+	}
+}
+
+// failManRunner always fails man/whatis calls (M2).
+type failManRunner struct{}
+
+func (failManRunner) Run(context.Context, string, ...string) (string, error) {
+	return "", context.DeadlineExceeded
+}
+func (failManRunner) RunPipeline(context.Context, []string, string, []string, string, []string) (string, error) {
+	return "", context.DeadlineExceeded
+}
+
+func TestGetProgramSurfacesParseWarning(t *testing.T) {
+	store, err := db.Open(filepath.Join(t.TempDir(), "wiki.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	if _, err := store.UpsertProgram(db.Program{
+		Name: "tool", Summary: "x", IsInstalled: true, ManParsed: false,
+	}, false); err != nil {
+		t.Fatal(err)
+	}
+	api := NewWithStore(store)
+	api.updater.Parser = &manparser.Parser{Runner: failManRunner{}}
+	detail, err := api.GetProgram("tool", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if detail.ParseWarning == "" {
+		t.Fatal("expected parseWarning when man parse fails (M2)")
+	}
+	if detail.Program.Name != "tool" {
+		t.Fatalf("%+v", detail.Program)
+	}
+}
+
+func TestListProgramsFTSHitHasProgramColumns(t *testing.T) {
+	store, err := db.Open(filepath.Join(t.TempDir(), "wiki.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	if _, err := store.UpsertProgram(db.Program{
+		Name: "ffmpeg", PackageName: "ffmpeg", Summary: "video transcoder",
+		Version: "6.1", IsInstalled: true, ManParsed: true,
+	}, false); err != nil {
+		t.Fatal(err)
+	}
+	api := NewWithStore(store)
+	rows, err := api.ListPrograms(ListQuery{Mode: "installed", Query: "video"})
+	if err != nil || len(rows) != 1 {
+		t.Fatalf("%+v err=%v", rows, err)
+	}
+	got := rows[0]
+	if got.Name != "ffmpeg" || got.PackageName != "ffmpeg" || got.Version != "6.1" || !got.IsInstalled || !got.ManParsed {
+		t.Fatalf("M4 hit columns incomplete: %+v", got)
+	}
+	hits, err := api.SearchPrograms(ListQuery{Mode: "installed", Query: "video"})
+	if err != nil || len(hits) != 1 || !hits[0].IsInstalled {
+		t.Fatalf("SearchPrograms IsInstalled: %+v err=%v", hits, err)
+	}
+}
+
+func TestCancelIndexSignalsOp(t *testing.T) {
+	api := New()
+	if api.CancelIndex() {
+		t.Fatal("CancelIndex with no op should be false")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	api.mu.Lock()
+	api.updating = true
+	api.opCancel = cancel
+	api.mu.Unlock()
+	if !api.IndexBusy() {
+		t.Fatal("expected busy")
+	}
+	if !api.CancelIndex() {
+		t.Fatal("expected cancel delivered")
+	}
+	select {
+	case <-ctx.Done():
+	case <-time.After(time.Second):
+		t.Fatal("context not cancelled")
+	}
+	api.endLongOp()
+	if api.IndexBusy() {
+		t.Fatal("busy after endLongOp")
+	}
+}
+
+func TestRemoveFromScriptAPI(t *testing.T) {
+	api := New()
+	if _, err := api.AddToScript("echo a"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := api.AddToScript("echo b"); err != nil {
+		t.Fatal(err)
+	}
+	draft, err := api.RemoveFromScript("echo a")
+	if err != nil || draft.Count != 1 || draft.Lines[0] != "echo b" {
+		t.Fatalf("%+v err=%v", draft, err)
+	}
+}
+
+func TestRunScriptCleansTempOnTerminalError(t *testing.T) {
+	api := New()
+	t.Setenv("TERMINAL", "/nonexistent/snippetshow-term")
+	t.Setenv("PATH", "/nonexistent")
+	before, _ := filepath.Glob(filepath.Join(os.TempDir(), "snippetshow-script-*"))
+	_, err := api.RunScript(RunRequest{Command: "echo hi", Confirmed: true})
+	if err == nil {
+		t.Fatal("expected terminal error")
+	}
+	after, _ := filepath.Glob(filepath.Join(os.TempDir(), "snippetshow-script-*"))
+	// Immediate scrub on error: no new leftover dirs vs before.
+	if len(after) > len(before) {
+		// Allow race with other tests; ensure our newest dirs are gone by re-glob after short wait.
+		time.Sleep(50 * time.Millisecond)
+		after, _ = filepath.Glob(filepath.Join(os.TempDir(), "snippetshow-script-*"))
+		newer := 0
+		for _, d := range after {
+			found := false
+			for _, b := range before {
+				if b == d {
+					found = true
+					break
+				}
+			}
+			if !found {
+				newer++
+			}
+		}
+		if newer > 0 {
+			t.Fatalf("M5: leftover temp dirs after failed RunScript: before=%d after=%d newer=%d (%v)",
+				len(before), len(after), newer, after)
+		}
+	}
+	// NeedsConfirm path must not create temps.
+	before2, _ := filepath.Glob(filepath.Join(os.TempDir(), "snippetshow-script-*"))
+	resp, err := api.RunScript(RunRequest{Command: "sudo true", Confirmed: false})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !resp.NeedsConfirm {
+		t.Fatalf("%+v", resp)
+	}
+	after2, _ := filepath.Glob(filepath.Join(os.TempDir(), "snippetshow-script-*"))
+	if len(after2) != len(before2) {
+		t.Fatalf("NeedsConfirm created temps: %d → %d", len(before2), len(after2))
 	}
 }

@@ -57,6 +57,8 @@ type ProgramDetail struct {
 	InstallCommand string          `json:"installCommand,omitempty"`
 	PackageManager string          `json:"packageManager,omitempty"`
 	CacheHint      string          `json:"cacheHint,omitempty"`
+	// ParseWarning is set when on-demand man parse failed (M2); detail still returns.
+	ParseWarning string `json:"parseWarning,omitempty"`
 }
 
 // SearchResultDTO is an FTS hit for the UI.
@@ -96,6 +98,7 @@ type API struct {
 	dbPath     string
 	onProgress ProgressHandler
 	updating   bool
+	opCancel   context.CancelFunc // cancels in-flight UpdateIndex / SyncRepoCatalog (M3)
 	draft      *scriptbuilder.Draft
 }
 
@@ -210,26 +213,64 @@ func (a *API) ScanInstalled() (index.UpdateResult, error) {
 	return res, nil
 }
 
+// beginLongOp marks the API busy and returns a cancellable context (M3).
+func (a *API) beginLongOp(timeout time.Duration) (context.Context, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.updating {
+		return nil, fmt.Errorf("оновлення індексу вже виконується")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	a.updating = true
+	a.opCancel = cancel
+	return ctx, nil
+}
+
+// endLongOp clears the busy flag and cancel handle.
+func (a *API) endLongOp() {
+	a.mu.Lock()
+	cancel := a.opCancel
+	a.opCancel = nil
+	a.updating = false
+	a.mu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
+}
+
+// CancelIndex cancels an in-flight UpdateIndex or SyncRepoCatalog (M3 / P2-7).
+// Returns true if a cancel signal was delivered.
+func (a *API) CancelIndex() bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.opCancel == nil {
+		return false
+	}
+	a.opCancel()
+	return true
+}
+
+// IndexBusy reports whether UpdateIndex / SyncRepoCatalog is running.
+func (a *API) IndexBusy() bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.updating
+}
+
+func isCancelErr(err error) bool {
+	return err != nil && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded))
+}
+
 // UpdateIndex performs incremental index refresh with progress events (P1-15/P2-7).
 func (a *API) UpdateIndex() (index.UpdateResult, error) {
 	if err := a.ensure(); err != nil {
 		return index.UpdateResult{}, err
 	}
-	a.mu.Lock()
-	if a.updating {
-		a.mu.Unlock()
-		return index.UpdateResult{}, fmt.Errorf("оновлення індексу вже виконується")
+	ctx, err := a.beginLongOp(5 * time.Minute)
+	if err != nil {
+		return index.UpdateResult{}, err
 	}
-	a.updating = true
-	a.mu.Unlock()
-	defer func() {
-		a.mu.Lock()
-		a.updating = false
-		a.mu.Unlock()
-	}()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
+	defer a.endLongOp()
 
 	progress := make(chan index.Progress, 32)
 	done := make(chan struct{})
@@ -243,6 +284,10 @@ func (a *API) UpdateIndex() (index.UpdateResult, error) {
 	res, err := a.updater.UpdateIndexWithProgress(ctx, progress)
 	close(progress)
 	<-done
+	if isCancelErr(err) || isCancelErr(ctx.Err()) {
+		a.emit(ProgressEvent{Phase: "cancelled", Message: "Скасовано"})
+		return res, fmt.Errorf("скасовано")
+	}
 	if err != nil {
 		return res, err
 	}
@@ -258,8 +303,12 @@ func (a *API) SyncRepoCatalog() (index.CatalogSyncResult, error) {
 	if err := a.ensure(); err != nil {
 		return index.CatalogSyncResult{}, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
+	ctx, err := a.beginLongOp(5 * time.Minute)
+	if err != nil {
+		return index.CatalogSyncResult{}, err
+	}
+	defer a.endLongOp()
+
 	progress := make(chan index.Progress, 32)
 	done := make(chan struct{})
 	go func() {
@@ -271,6 +320,10 @@ func (a *API) SyncRepoCatalog() (index.CatalogSyncResult, error) {
 	res, err := a.updater.SyncRepoCatalog(ctx, progress)
 	close(progress)
 	<-done
+	if isCancelErr(err) || isCancelErr(ctx.Err()) {
+		a.emit(ProgressEvent{Phase: "cancelled", Message: "Скасовано"})
+		return res, fmt.Errorf("скасовано")
+	}
 	return res, err
 }
 
@@ -286,11 +339,15 @@ func (a *API) GetProgram(name string, parseMan bool) (*ProgramDetail, error) {
 		}
 		return nil, err
 	}
+	var parseWarning string
 	if parseMan && p.IsInstalled && !p.ManParsed {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		a.emit(ProgressEvent{Phase: "parse", Message: "Парсинг man: " + name})
-		if err := a.updater.ParseProgram(ctx, name); err == nil {
+		if err := a.updater.ParseProgram(ctx, name); err != nil {
+			// M2: surface parse failure instead of silently returning an empty flag table.
+			parseWarning = err.Error()
+		} else {
 			p, err = a.store.GetProgramByName(name)
 			if err != nil {
 				return nil, err
@@ -305,7 +362,7 @@ func (a *API) GetProgram(name string, parseMan bool) (*ProgramDetail, error) {
 	if err != nil {
 		return nil, err
 	}
-	dto := ProgramDetail{Program: toDTO(p), Snippets: []SnippetDTO{}}
+	dto := ProgramDetail{Program: toDTO(p), Snippets: []SnippetDTO{}, ParseWarning: parseWarning}
 	for _, c := range cmds {
 		dto.Commands = append(dto.Commands, ManCommandDTO{ID: c.ID, Flag: c.Flag, Description: c.Description})
 	}
@@ -364,13 +421,10 @@ func (a *API) ListPrograms(q ListQuery) ([]ProgramDTO, error) {
 		if err != nil {
 			return nil, err
 		}
+		// M4: SearchHit already carries program columns — no per-hit GetProgramByID.
 		out := make([]ProgramDTO, 0, len(hits))
 		for _, h := range hits {
-			p, err := a.store.GetProgramByID(h.ProgramID)
-			if err != nil {
-				continue
-			}
-			out = append(out, toDTO(p))
+			out = append(out, hitToDTO(h))
 		}
 		return out, nil
 	}
@@ -411,13 +465,8 @@ func (a *API) SearchPrograms(q ListQuery) ([]SearchResultDTO, error) {
 	}
 	out := make([]SearchResultDTO, 0, len(hits))
 	for _, h := range hits {
-		p, err := a.store.GetProgramByID(h.ProgramID)
-		installed := false
-		if err == nil {
-			installed = p.IsInstalled
-		}
 		out = append(out, SearchResultDTO{
-			ProgramID: h.ProgramID, Name: h.Name, Summary: h.Summary, Rank: h.Rank, IsInstalled: installed,
+			ProgramID: h.ProgramID, Name: h.Name, Summary: h.Summary, Rank: h.Rank, IsInstalled: h.IsInstalled,
 		})
 	}
 	return out, nil
@@ -470,5 +519,17 @@ func toDTO(p *db.Program) ProgramDTO {
 		Version:     p.Version,
 		IsInstalled: p.IsInstalled,
 		ManParsed:   p.ManParsed,
+	}
+}
+
+func hitToDTO(h db.SearchHit) ProgramDTO {
+	return ProgramDTO{
+		ID:          h.ProgramID,
+		Name:        h.Name,
+		PackageName: h.PackageName,
+		Summary:     h.Summary,
+		Version:     h.Version,
+		IsInstalled: h.IsInstalled,
+		ManParsed:   h.ManParsed,
 	}
 }

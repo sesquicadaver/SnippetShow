@@ -9,7 +9,11 @@ export function AnalyzeCommand(arg1:string):Promise<app.SafetyDTO>;
 
 export function AppInfo():Promise<app.Info>;
 
+export function CancelIndex():Promise<boolean>;
+
 export function ClearScriptDraft():Promise<app.ScriptDraftDTO>;
+
+export function IndexBusy():Promise<boolean>;
 
 export function CopyText(arg1:string):Promise<app.CopyResponse>;
 
@@ -56,6 +60,8 @@ export function LoadCustomScript(arg1:number):Promise<app.ScriptDraftDTO>;
 export function MoveScriptLine(arg1:number,arg2:string):Promise<app.ScriptDraftDTO>;
 
 export function PhaseStatus():Promise<string>;
+
+export function RemoveFromScript(arg1:string):Promise<app.ScriptDraftDTO>;
 
 export function RemoveScriptLine(arg1:number):Promise<app.ScriptDraftDTO>;
 

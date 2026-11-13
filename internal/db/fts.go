@@ -97,7 +97,8 @@ func (s *Store) SearchFiltered(query string, f ProgramFilter) ([]SearchHit, erro
 	}
 	ftsQuery := buildFTSQuery(q)
 	sqlQ := `
-SELECT p.id, p.name, COALESCE(p.summary,''), COALESCE(bm25(programs_fts), 0) AS rank
+SELECT p.id, p.name, COALESCE(p.package_name,''), COALESCE(p.summary,''), COALESCE(p.version,''),
+       p.is_installed, p.man_parsed, COALESCE(bm25(programs_fts), 0) AS rank
 FROM programs_fts
 JOIN programs p ON p.id = programs_fts.rowid
 WHERE programs_fts MATCH ?`
@@ -130,9 +131,15 @@ WHERE programs_fts MATCH ?`
 	var hits []SearchHit
 	for rows.Next() {
 		var h SearchHit
-		if err := rows.Scan(&h.ProgramID, &h.Name, &h.Summary, &h.Rank); err != nil {
+		var installed, manParsed int
+		if err := rows.Scan(
+			&h.ProgramID, &h.Name, &h.PackageName, &h.Summary, &h.Version,
+			&installed, &manParsed, &h.Rank,
+		); err != nil {
 			return nil, err
 		}
+		h.IsInstalled = installed == 1
+		h.ManParsed = manParsed == 1
 		hits = append(hits, h)
 	}
 	return hits, rows.Err()

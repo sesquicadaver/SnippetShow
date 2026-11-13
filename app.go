@@ -56,6 +56,16 @@ func (a *App) UpdateIndex() (index.UpdateResult, error) {
 	return a.api.UpdateIndex()
 }
 
+// CancelIndex cancels an in-flight UpdateIndex or SyncRepoCatalog (M3).
+func (a *App) CancelIndex() bool {
+	return a.api.CancelIndex()
+}
+
+// IndexBusy reports whether a long index/catalog op is running.
+func (a *App) IndexBusy() bool {
+	return a.api.IndexBusy()
+}
+
 // SyncRepoCatalog loads the distribution package cache into programs (D5).
 func (a *App) SyncRepoCatalog() (index.CatalogSyncResult, error) {
 	return a.api.SyncRepoCatalog()
@@ -147,6 +157,11 @@ func (a *App) RunCommand(req appapi.RunRequest) (appapi.RunResponse, error) {
 // AddToScript appends a line to the in-memory Script Builder draft (P3-11).
 func (a *App) AddToScript(command string) (appapi.ScriptDraftDTO, error) {
 	return a.api.AddToScript(command)
+}
+
+// RemoveFromScript removes the last matching draft line (L1 Wiki uncheck).
+func (a *App) RemoveFromScript(command string) (appapi.ScriptDraftDTO, error) {
+	return a.api.RemoveFromScript(command)
 }
 
 // ScriptDraft returns the current draft snapshot.

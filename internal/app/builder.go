@@ -7,12 +7,20 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"snippetshow/internal/backup"
 	"snippetshow/internal/db"
 	"snippetshow/internal/safety"
 	"snippetshow/internal/scriptbuilder"
 )
+
+// scriptTempPrefix is the MkdirTemp pattern prefix for RunScript bodies (M5).
+const scriptTempPrefix = "snippetshow-script-"
+
+// scriptTempGrace is how long a launched script temp dir is kept before scrub.
+// Terminal.Run detaches immediately; bash must still be able to open the file.
+const scriptTempGrace = 2 * time.Minute
 
 // ScriptDraftDTO is a view of the in-memory builder draft (P3-11 / P4-1).
 type ScriptDraftDTO struct {
@@ -52,6 +60,16 @@ func (a *API) AddToScript(command string) (ScriptDraftDTO, error) {
 		return ScriptDraftDTO{}, fmt.Errorf("порожня команда")
 	}
 	a.draft.Add(cmd)
+	return a.ScriptDraft(), nil
+}
+
+// RemoveFromScript removes the last matching command from the draft (L1 Wiki uncheck).
+func (a *API) RemoveFromScript(command string) (ScriptDraftDTO, error) {
+	cmd := strings.TrimSpace(command)
+	if cmd == "" {
+		return ScriptDraftDTO{}, fmt.Errorf("порожня команда")
+	}
+	_ = a.draft.RemoveCommand(cmd)
 	return a.ScriptDraft(), nil
 }
 
@@ -123,6 +141,7 @@ func (a *API) ExportScriptFile(path, body string) error {
 
 // RunScript runs a full script body in the terminal with the same safety gate (P4-5).
 // The body is written to a temp executable and launched as `bash <path>` so newlines stay intact.
+// Temp dirs are scrubbed on error immediately and after a grace period on success (M5).
 func (a *API) RunScript(req RunRequest) (RunResponse, error) {
 	body := strings.TrimSpace(req.Command)
 	if body == "" {
@@ -133,22 +152,63 @@ func (a *API) RunScript(req RunRequest) (RunResponse, error) {
 	if r.Dangerous && !req.Confirmed {
 		return RunResponse{NeedsConfirm: true, Reasons: r.Reasons}, nil
 	}
-	dir, err := os.MkdirTemp("", "snippetshow-script-*")
+	scrubStaleScriptTemps()
+	dir, err := os.MkdirTemp("", scriptTempPrefix+"*")
 	if err != nil {
 		return RunResponse{Error: err.Error()}, err
 	}
 	path := filepath.Join(dir, "run.sh")
 	if err := scriptbuilder.WriteExecutable(path, body); err != nil {
+		scrubScriptTempDir(dir)
 		return RunResponse{Error: err.Error()}, err
 	}
-	return a.RunCommand(RunRequest{
+	resp, err := a.RunCommand(RunRequest{
 		Command:   "bash " + shellQuote(path),
 		Confirmed: true, // already gated above on full body
 	})
+	if err != nil || !resp.Started {
+		scrubScriptTempDir(dir)
+		return resp, err
+	}
+	scheduleScriptTempCleanup(dir)
+	return resp, nil
 }
 
 func shellQuote(path string) string {
 	return `'` + strings.ReplaceAll(path, `'`, `'\''`) + `'`
+}
+
+func scrubScriptTempDir(dir string) {
+	if strings.TrimSpace(dir) == "" {
+		return
+	}
+	_ = os.RemoveAll(dir)
+}
+
+func scheduleScriptTempCleanup(dir string) {
+	go func() {
+		time.Sleep(scriptTempGrace)
+		scrubScriptTempDir(dir)
+	}()
+}
+
+// scrubStaleScriptTemps removes leftover snippetshow-script-* dirs older than grace (M5).
+func scrubStaleScriptTemps() {
+	pattern := filepath.Join(os.TempDir(), scriptTempPrefix+"*")
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		return
+	}
+	cutoff := time.Now().Add(-scriptTempGrace)
+	for _, dir := range matches {
+		info, err := os.Stat(dir)
+		if err != nil || !info.IsDir() {
+			continue
+		}
+		if info.ModTime().Before(cutoff) {
+			scrubScriptTempDir(dir)
+		}
+	}
 }
 
 // ListCustomScripts returns saved scripts from DB (P4-7).

@@ -126,6 +126,24 @@ func (d *Draft) Remove(i int) error {
 	return nil
 }
 
+// RemoveCommand removes the last draft line equal to command (trimmed).
+// Used by Wiki checkbox uncheck so Add ↔ uncheck stays reversible (L1).
+func (d *Draft) RemoveCommand(command string) bool {
+	command = strings.TrimSpace(command)
+	if d == nil || command == "" {
+		return false
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	for i := len(d.Lines) - 1; i >= 0; i-- {
+		if strings.TrimSpace(d.Lines[i]) == command {
+			d.Lines = append(d.Lines[:i], d.Lines[i+1:]...)
+			return true
+		}
+	}
+	return false
+}
+
 // ApplyBody replaces the draft from a freeform editor body (P4-3 / H3).
 // Blank lines are preserved. Only a leading shebang line is stripped; inner "#!…"
 // lines stay so editor round-trips do not destroy script structure (L7).
