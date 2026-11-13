@@ -243,6 +243,7 @@ type CatalogSyncResult struct {
 }
 
 // SyncRepoCatalog upserts distribution packages as programs without demoting installed rows.
+// Writes go through transactional batch upsert with deferred FTS (H4).
 func (u *Updater) SyncRepoCatalog(ctx context.Context, progress chan<- Progress) (CatalogSyncResult, error) {
 	if u.Store == nil {
 		return CatalogSyncResult{}, fmt.Errorf("index: nil store")
@@ -266,25 +267,30 @@ func (u *Updater) SyncRepoCatalog(ctx context.Context, progress chan<- Progress)
 		send(Progress{Phase: "catalog", Message: cat.Hint})
 		return out, nil
 	}
-	for i, pkg := range cat.Packages {
+	entries := make([]db.CatalogEntry, 0, len(cat.Packages))
+	for _, pkg := range cat.Packages {
 		select {
 		case <-ctx.Done():
 			return out, ctx.Err()
 		default:
 		}
-		before, _ := u.Store.GetProgramByName(pkg.Name)
-		id, err := u.Store.UpsertCatalogProgram(pkg.Name, pkg.Name, pkg.Summary)
-		if err != nil {
-			return out, err
-		}
-		_ = id
-		if before == nil {
-			out.Added++
-		}
-		if i%250 == 0 || i+1 == len(cat.Packages) {
-			send(Progress{Phase: "catalog", Done: i + 1, Total: len(cat.Packages), Message: pkg.Name})
-		}
+		entries = append(entries, db.CatalogEntry{
+			Name:        pkg.Name,
+			PackageName: pkg.Name,
+			Summary:     pkg.Summary,
+		})
 	}
+	added, err := u.Store.UpsertCatalogProgramsBatch(entries, db.DefaultCatalogChunkSize, func(done, total int) {
+		msg := ""
+		if done > 0 && done <= len(cat.Packages) {
+			msg = cat.Packages[done-1].Name
+		}
+		send(Progress{Phase: "catalog", Done: done, Total: total, Message: msg})
+	})
+	if err != nil {
+		return out, err
+	}
+	out.Added = added
 	send(Progress{Phase: "done", Message: fmt.Sprintf("Каталог: додано %d пакетів", out.Added)})
 	return out, nil
 }

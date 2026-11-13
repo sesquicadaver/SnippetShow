@@ -6,15 +6,42 @@ import (
 	"strings"
 )
 
+// DefaultCatalogChunkSize is how many catalog packages are written per transaction
+// before deferred FTS sync (H4). Keeps SQLite locks short while avoiding per-row FTS.
+const DefaultCatalogChunkSize = 500
+
+// CatalogEntry is one repo-catalog package for batch upsert (H4).
+type CatalogEntry struct {
+	Name        string
+	PackageName string
+	Summary     string
+}
+
+type sqlExec interface {
+	Exec(query string, args ...any) (sql.Result, error)
+	QueryRow(query string, args ...any) *sql.Row
+}
+
 // UpsertProgram inserts or updates a program by unique name.
 // On conflict, metadata and install flags are refreshed; man_parsed is reset
 // only when the caller sets ResetManParsed (version change / reparse needed).
 func (s *Store) UpsertProgram(p Program, resetManParsed bool) (int64, error) {
+	id, err := s.upsertProgramExec(s.db, p, resetManParsed)
+	if err != nil {
+		return id, err
+	}
+	if err := s.syncFTS(id); err != nil {
+		return id, err
+	}
+	return id, nil
+}
+
+func (s *Store) upsertProgramExec(ex sqlExec, p Program, resetManParsed bool) (int64, error) {
 	manParsed := boolToInt(p.ManParsed)
 	if resetManParsed {
 		manParsed = 0
 	}
-	res, err := s.db.Exec(`
+	_, err := ex.Exec(`
 INSERT INTO programs(name, package_name, summary, version, is_installed, man_parsed)
 VALUES(?, ?, ?, ?, ?, ?)
 ON CONFLICT(name) DO UPDATE SET
@@ -33,15 +60,7 @@ ON CONFLICT(name) DO UPDATE SET
 	if err != nil {
 		return 0, fmt.Errorf("db: upsert program %q: %w", p.Name, err)
 	}
-	id, err := s.programIDByName(p.Name)
-	if err != nil {
-		return 0, err
-	}
-	_ = res
-	if err := s.syncFTS(id); err != nil {
-		return id, err
-	}
-	return id, nil
+	return programIDByNameExec(ex, p.Name)
 }
 
 // GetProgramByID loads a program by primary key.
@@ -55,7 +74,11 @@ FROM programs WHERE id = ?`, id)
 
 // GetProgramByName loads a program by unique command name.
 func (s *Store) GetProgramByName(name string) (*Program, error) {
-	row := s.db.QueryRow(`
+	return getProgramByNameExec(s.db, name)
+}
+
+func getProgramByNameExec(ex sqlExec, name string) (*Program, error) {
+	row := ex.QueryRow(`
 SELECT id, name, COALESCE(package_name,''), COALESCE(summary,''), COALESCE(version,''),
        is_installed, man_parsed
 FROM programs WHERE name = ?`, name)
@@ -125,15 +148,82 @@ FROM programs`
 
 // UpsertCatalogProgram inserts a repo-catalog package without demoting installed rows.
 // Existing installed programs keep is_installed=1; summary is filled only when empty.
+// Single-row path syncs FTS immediately; mass sync should use UpsertCatalogProgramsBatch (H4).
 func (s *Store) UpsertCatalogProgram(name, packageName, summary string) (int64, error) {
+	id, _, changed, err := s.applyCatalogEntry(s.db, name, packageName, summary)
+	if err != nil {
+		return id, err
+	}
+	if changed {
+		if err := s.syncFTS(id); err != nil {
+			return id, err
+		}
+	}
+	return id, nil
+}
+
+// UpsertCatalogProgramsBatch upserts many catalog packages in transactional chunks.
+// FTS runs once per touched id after each chunk commit — not interleaved with every
+// mid-chunk row write — so SyncRepoCatalog no longer does N full syncFTS-on-upsert (H4).
+// onChunk(done, total) is optional progress (done = packages processed so far).
+func (s *Store) UpsertCatalogProgramsBatch(entries []CatalogEntry, chunkSize int, onChunk func(done, total int)) (added int, err error) {
+	if chunkSize <= 0 {
+		chunkSize = DefaultCatalogChunkSize
+	}
+	total := len(entries)
+	for i := 0; i < total; i += chunkSize {
+		end := i + chunkSize
+		if end > total {
+			end = total
+		}
+		tx, err := s.db.Begin()
+		if err != nil {
+			return added, err
+		}
+		var touched []int64
+		s.catalogBatchWriting.Store(true)
+		for _, e := range entries[i:end] {
+			id, isNew, changed, err := s.applyCatalogEntry(tx, e.Name, e.PackageName, e.Summary)
+			if err != nil {
+				s.catalogBatchWriting.Store(false)
+				_ = tx.Rollback()
+				return added, err
+			}
+			if isNew {
+				added++
+			}
+			if changed {
+				touched = append(touched, id)
+			}
+		}
+		if err := tx.Commit(); err != nil {
+			s.catalogBatchWriting.Store(false)
+			return added, err
+		}
+		s.catalogBatchWriting.Store(false)
+		for _, id := range touched {
+			if err := s.syncFTS(id); err != nil {
+				return added, err
+			}
+		}
+		if onChunk != nil {
+			onChunk(end, total)
+		}
+	}
+	return added, nil
+}
+
+// applyCatalogEntry upserts one catalog package without FTS.
+// isNew is true when the name did not exist; changed is true when FTS must refresh.
+func (s *Store) applyCatalogEntry(ex sqlExec, name, packageName, summary string) (id int64, isNew bool, changed bool, err error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return 0, fmt.Errorf("db: empty catalog program name")
+		return 0, false, false, fmt.Errorf("db: empty catalog program name")
 	}
-	existing, err := s.GetProgramByName(name)
+	existing, err := getProgramByNameExec(ex, name)
 	if err == nil {
 		if existing.Summary == "" && strings.TrimSpace(summary) != "" {
-			_, err = s.UpsertProgram(Program{
+			id, err = s.upsertProgramExec(ex, Program{
 				Name:        existing.Name,
 				PackageName: firstNonEmpty(existing.PackageName, packageName),
 				Summary:     summary,
@@ -141,23 +231,24 @@ func (s *Store) UpsertCatalogProgram(name, packageName, summary string) (int64, 
 				IsInstalled: existing.IsInstalled,
 				ManParsed:   existing.ManParsed,
 			}, false)
-			return existing.ID, err
+			return id, false, true, err
 		}
-		return existing.ID, nil
+		return existing.ID, false, false, nil
 	}
 	if err != sql.ErrNoRows {
-		return 0, err
+		return 0, false, false, err
 	}
 	pkg := packageName
 	if pkg == "" {
 		pkg = name
 	}
-	return s.UpsertProgram(Program{
+	id, err = s.upsertProgramExec(ex, Program{
 		Name:        name,
 		PackageName: pkg,
 		Summary:     summary,
 		IsInstalled: false,
 	}, false)
+	return id, true, true, err
 }
 
 func firstNonEmpty(vals ...string) string {
@@ -261,8 +352,12 @@ func (s *Store) CountUserSnippets(programID int64) (int, error) {
 }
 
 func (s *Store) programIDByName(name string) (int64, error) {
+	return programIDByNameExec(s.db, name)
+}
+
+func programIDByNameExec(ex sqlExec, name string) (int64, error) {
 	var id int64
-	err := s.db.QueryRow(`SELECT id FROM programs WHERE name = ?`, name).Scan(&id)
+	err := ex.QueryRow(`SELECT id FROM programs WHERE name = ?`, name).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("db: program id for %q: %w", name, err)
 	}

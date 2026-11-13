@@ -7,6 +7,10 @@ import (
 
 // syncFTS rebuilds the contentless FTS5 row for one program (name, summary, flags, snippets).
 func (s *Store) syncFTS(programID int64) error {
+	if s.catalogBatchWriting.Load() {
+		return fmt.Errorf("db: syncFTS during catalog batch write (H4)")
+	}
+	s.FTSSyncCount.Add(1)
 	p, err := s.GetProgramByID(programID)
 	if err != nil {
 		return err

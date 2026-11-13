@@ -4,9 +4,7 @@
 
 ## OPEN (hotfix queue)
 
-| ID | Тема | Нотатка |
-|----|------|---------|
-| FIX-H4 | Catalog batch upsert / відкладений FTS | NFR / UX «Підвантажити каталог» |
+_(порожньо — H2/H1/M1/H3/H4 закриті в hotfix-черзі)_
 
 ## DONE (hotfix)
 
@@ -16,6 +14,7 @@
 | FIX-H1 | ParseOnUpdate + reparse on version change | `index.New` → `ParseOnUpdate: true` |
 | FIX-M1 | `ParseMany` pool у index UpdateIndex | Workers 4–8; progress phase `parse` |
 | FIX-H3 | Script Builder blank lines / editor fidelity | `ApplyBody` зберігає blanks; strip лише leading shebang |
+| FIX-H4 | Catalog batch upsert / deferred FTS | chunks 500; FTS після commit; D5 без змін |
 
 ## Backlog (після v0.1)
 

@@ -397,6 +397,111 @@ func TestUpdateIndexParsesNewInstall(t *testing.T) {
 	}
 }
 
+func TestSyncRepoCatalogBatchAndCacheEmpty(t *testing.T) {
+	store := openStore(t)
+	_, err := store.UpsertProgram(db.Program{Name: "keepme", Summary: "local", IsInstalled: true}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseFTS := store.FTSSyncCount.Load()
+
+	const n = 1100
+	var names []string
+	for i := 0; i < n; i++ {
+		names = append(names, "catpkg"+itoaPad(i, 4))
+	}
+	exec := &mockExec{
+		bins: map[string]string{
+			"dpkg-query": "/usr/bin/dpkg-query",
+			"apt-cache":  "/usr/bin/apt-cache",
+		},
+		outs: map[string]string{
+			"apt-cache pkgnames": strings.Join(names, "\n"),
+			"apt-cache search .": names[0] + " - first\n" + names[n-1] + " - last\n",
+		},
+	}
+	u := &Updater{
+		Store: store,
+		Scanner: &scanner.Scanner{
+			Runner:        exec,
+			PathEnv:       t.TempDir(),
+			Home:          t.TempDir(),
+			SkipCanonical: true,
+		},
+		Parser: &manparser.Parser{Runner: &mockMan{}},
+	}
+	prog := make(chan Progress, 32)
+	var sawCatalog bool
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for p := range prog {
+			if p.Phase == "catalog" && p.Total == n {
+				sawCatalog = true
+			}
+		}
+	}()
+	res, err := u.SyncRepoCatalog(context.Background(), prog)
+	close(prog)
+	<-done
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Status != scanner.CacheOK || res.Added != n || res.Total != n {
+		t.Fatalf("%+v", res)
+	}
+	if !sawCatalog {
+		t.Fatal("missing catalog progress")
+	}
+	ftsDelta := store.FTSSyncCount.Load() - baseFTS
+	if ftsDelta != int64(n) {
+		t.Fatalf("FTS syncs=%d want %d", ftsDelta, n)
+	}
+	hits, err := store.Search(names[0])
+	if err != nil || len(hits) == 0 {
+		t.Fatalf("fts missing first: %v err=%v", hits, err)
+	}
+	keep, err := store.GetProgramByName("keepme")
+	if err != nil || !keep.IsInstalled {
+		t.Fatalf("installed demoted: %+v err=%v", keep, err)
+	}
+
+	// D5: empty apt cache soft-fail.
+	u.Scanner.Runner = &mockExec{
+		bins: map[string]string{"dpkg-query": "/usr/bin/dpkg-query", "apt-cache": "/usr/bin/apt-cache"},
+		outs: map[string]string{},
+	}
+	empty, err := u.SyncRepoCatalog(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if empty.Status != scanner.CacheEmpty {
+		t.Fatalf("cache_empty: %+v", empty)
+	}
+}
+
+func itoaPad(i, width int) string {
+	s := itoa(i)
+	for len(s) < width {
+		s = "0" + s
+	}
+	return s
+}
+
+func itoa(i int) string {
+	if i == 0 {
+		return "0"
+	}
+	var b [12]byte
+	pos := len(b)
+	for i > 0 {
+		pos--
+		b[pos] = byte('0' + i%10)
+		i /= 10
+	}
+	return string(b[pos:])
+}
+
 func TestUpdateIndexUsesParseManyPool(t *testing.T) {
 	store := openStore(t)
 	binDir := t.TempDir()

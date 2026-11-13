@@ -6,7 +6,7 @@
 |-----|------------------|--------|------|--------|
 | §1 | Go 1.22+ / Wails v2 / SQLite modernc / ELF + webkit2gtk | `main.go`, `wails.json`, `go.mod`, `build/build.sh` | `scripts/ci-local.sh`, CI workflow | done |
 | §1 | Платформи Debian/Ubuntu, Arch, Fedora (лише Linux) | README; `build/dist-notes-*.md`; без `build/windows`/`build/darwin` | dist smoke чеклісти | done |
-| §2.1 | System Scanner (PM + PATH + repo catalog) | `internal/scanner` | `scanner_test.go` | done |
+| §2.1 | System Scanner (PM + PATH + repo catalog batch upsert/FTS) | `internal/scanner`, `internal/db`, `internal/index` | `scanner_test.go`, `db_test.go`, `index_test.go` | done |
 | §2.2 | Man Parser (whatis, raw, OPTIONS regex, pool 4–8 у UpdateIndex) | `internal/manparser`, `internal/index` | `manparser_test.go`, `index_test.go` (ParseMany) | done |
 | §2.3 | Incremental «Оновити індекс» + reparse man при зміні версії | `internal/index` (`ParseOnUpdate`) | `index_test.go` | done |
 | §3 | SQLite schema + FTS5 path | `internal/db` | `db_test.go` | done |
