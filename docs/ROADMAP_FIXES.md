@@ -6,7 +6,6 @@
 
 | ID | Тема | Нотатка |
 |----|------|---------|
-| FIX-H3 | Script Builder: зберігати blank lines / editor fidelity | ТЗ §4.4; L7 shebang strip |
 | FIX-H4 | Catalog batch upsert / відкладений FTS | NFR / UX «Підвантажити каталог» |
 
 ## DONE (hotfix)
@@ -16,6 +15,7 @@
 | FIX-H2 | Safety: path/env/command-word bypass | `/usr/bin/sudo`, `/bin/rm -rf`, `env sudo`, … → confirm |
 | FIX-H1 | ParseOnUpdate + reparse on version change | `index.New` → `ParseOnUpdate: true` |
 | FIX-M1 | `ParseMany` pool у index UpdateIndex | Workers 4–8; progress phase `parse` |
+| FIX-H3 | Script Builder blank lines / editor fidelity | `ApplyBody` зберігає blanks; strip лише leading shebang |
 
 ## Backlog (після v0.1)
 

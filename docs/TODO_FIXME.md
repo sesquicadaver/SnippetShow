@@ -42,7 +42,7 @@
 | H2 | Safety bypass path-prefix / `env` wrappers (`/usr/bin/sudo`, `/bin/rm -rf`, …) | **done** — command-word + wrap/path у `internal/safety` |
 | H1 | `ParseOnUpdate` не вмикається → немає reparse man при зміні версії | **done** — `index.New` вмикає прапор; FirstRun без mass parse |
 | M1 | `ParseMany` pool не підключений в index | **done** — `parseMany` у UpdateIndex |
-| H3 | Script Builder стирає порожні рядки на commit | OPEN |
+| H3 | Script Builder стирає порожні рядки на commit | **done** — `ApplyBody` vs dense `SetLines`; L7 inner `#!` kept |
 | H4 | Catalog sync: per-package upsert + FTS → зависання | OPEN |
 
 ## Відомі обмеження Core / Wiki / Builder

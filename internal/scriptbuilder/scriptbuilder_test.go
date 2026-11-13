@@ -55,10 +55,51 @@ func TestDraftAddGenerateReorder(t *testing.T) {
 	}
 }
 
+func TestApplyBodyPreservesBlankLines(t *testing.T) {
+	d := NewDraft()
+	src := Shebang + "\necho a\n\necho b\n"
+	d.ApplyBody(src)
+	snap := d.Snapshot()
+	if len(snap) != 3 || snap[0] != "echo a" || snap[1] != "" || snap[2] != "echo b" {
+		t.Fatalf("blank lines lost: %#v", snap)
+	}
+	got := d.Generate()
+	if got != src {
+		t.Fatalf("round-trip:\n got=%q\nwant=%q", got, src)
+	}
+	// Second ApplyBody must keep blanks (editor blur / SetScriptBody path).
+	d.ApplyBody(got)
+	if d.Generate() != src {
+		t.Fatalf("second round-trip failed: %q", d.Generate())
+	}
+}
+
+func TestApplyBodyKeepsInnerShebangLine(t *testing.T) {
+	d := NewDraft()
+	src := Shebang + "\necho start\n#!/not-shebang\necho end\n"
+	d.ApplyBody(src)
+	snap := d.Snapshot()
+	if len(snap) != 3 || snap[1] != "#!/not-shebang" {
+		t.Fatalf("inner #! stripped: %#v", snap)
+	}
+	if !strings.Contains(d.Generate(), "#!/not-shebang\n") {
+		t.Fatalf("generate lost inner #!: %q", d.Generate())
+	}
+}
+
+func TestSetLinesStillDenseForListOps(t *testing.T) {
+	d := NewDraft()
+	d.SetLines([]string{Shebang, "echo a", "", "#!/x", "echo b"})
+	snap := d.Snapshot()
+	if len(snap) != 2 || snap[0] != "echo a" || snap[1] != "echo b" {
+		t.Fatalf("SetLines dense filter broken: %#v", snap)
+	}
+}
+
 func TestApplyBodyAndEnsureShebang(t *testing.T) {
 	d := NewDraft()
 	d.ApplyBody(Shebang + "\necho a\n\necho b\n")
-	if d.Count() != 2 {
+	if d.Count() != 3 {
 		t.Fatalf("%v", d.Snapshot())
 	}
 	got := EnsureShebang("echo x\n")
@@ -68,6 +109,11 @@ func TestApplyBodyAndEnsureShebang(t *testing.T) {
 	got2 := EnsureShebang("#!/bin/sh\necho y\n")
 	if !strings.HasPrefix(got2, Shebang+"\n") || strings.Contains(got2, "#!/bin/sh") {
 		t.Fatalf("%q", got2)
+	}
+	// EnsureShebang must not strip an inner #! line.
+	got3 := EnsureShebang(Shebang + "\necho a\n#!/inner\necho b\n")
+	if !strings.Contains(got3, "#!/inner\n") {
+		t.Fatalf("EnsureShebang stripped inner #!: %q", got3)
 	}
 }
 
