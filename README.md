@@ -71,10 +71,12 @@ wails dev
 ./scripts/ci-local.sh
 ```
 
-## Структура (Phase 0)
+## Структура
 
-Див. план у Agent Store / `docs/`. Коротко: `internal/{app,db,scanner,manparser,index,clipboard,terminal,safety,backup,scriptbuilder}`, `frontend/` (Vanilla), `docs/`, `scripts/ci-local.sh`, `.github/workflows/ci.yml`.
+`internal/{app,db,scanner,manparser,index,clipboard,terminal,safety,backup,scriptbuilder}`, `frontend/` (Vanilla), `docs/`, `scripts/ci-local.sh`, `.github/workflows/ci.yml`.
+
+Збірка **лише Linux** (`build/build.sh` + `build/appicon.png`). Каталоги `build/windows` / `build/darwin` навмисно відсутні.
 
 ## Статус
 
-**Фаза 0** — скелет Wails/Go, документація рішень, заглушки модулів без повної Core-логіки.
+**Фаза 1** — Core & DB: SQLite/FTS5, scanner, manparser, incremental index, App API (`ScanInstalled`, `UpdateIndex`, `GetProgram`, `Search`).
