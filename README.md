@@ -79,4 +79,14 @@ wails dev
 
 ## Статус
 
-**Фаза 1** — Core & DB: SQLite/FTS5, scanner, manparser, incremental index, App API (`ScanInstalled`, `UpdateIndex`, `GetProgram`, `Search`).
+**Фаза 2** — Read-Only Wiki UI: toolbar (Встановлені/Всі, FTS-пошук, A–Z, оновлення індексу), віртуалізований список, man-таблиця + Raw Man, підказка install для невстановлених.  
+Сніпети / Copy / Run — фаза 3; Script Builder — фаза 4.
+
+## Wiki UI (фаза 2)
+
+Після `wails dev` або збірки ELF:
+
+1. Стартовий `EnsureIndexed` сканує встановлені бінарники.
+2. Toolbar: режими, живий пошук (~180 мс debounce), алфавіт, «Оновити індекс» (подія `index:progress`).
+3. Ліворуч — список Назва | Опис | Статус; у центрі — man або install-команда (D6).
+4. «Підвантажити каталог» — sync PM cache для режиму «Всі» (D5).

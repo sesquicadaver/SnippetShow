@@ -193,3 +193,58 @@ func (u *Updater) EnsureIndexed(ctx context.Context) (UpdateResult, error) {
 	defer cancel()
 	return u.FirstRun(ctx)
 }
+
+// CatalogSyncResult summarises a repo-catalog sync into programs (Phase 2 / D5).
+type CatalogSyncResult struct {
+	Added  int                   `json:"added"`
+	Status scanner.CacheStatus   `json:"status"`
+	Hint   string                `json:"hint"`
+	Total  int                   `json:"total"`
+}
+
+// SyncRepoCatalog upserts distribution packages as programs without demoting installed rows.
+func (u *Updater) SyncRepoCatalog(ctx context.Context, progress chan<- Progress) (CatalogSyncResult, error) {
+	if u.Store == nil {
+		return CatalogSyncResult{}, fmt.Errorf("index: nil store")
+	}
+	send := func(p Progress) {
+		if progress == nil {
+			return
+		}
+		select {
+		case progress <- p:
+		case <-ctx.Done():
+		}
+	}
+	send(Progress{Phase: "catalog", Message: "Читання каталогу репозиторію"})
+	cat, err := u.Scanner.ListRepoCatalog(ctx)
+	out := CatalogSyncResult{Status: cat.Status, Hint: cat.Hint, Total: len(cat.Packages)}
+	if err != nil {
+		return out, err
+	}
+	if cat.Status == scanner.CacheEmpty || len(cat.Packages) == 0 {
+		send(Progress{Phase: "catalog", Message: cat.Hint})
+		return out, nil
+	}
+	for i, pkg := range cat.Packages {
+		select {
+		case <-ctx.Done():
+			return out, ctx.Err()
+		default:
+		}
+		before, _ := u.Store.GetProgramByName(pkg.Name)
+		id, err := u.Store.UpsertCatalogProgram(pkg.Name, pkg.Name, pkg.Summary)
+		if err != nil {
+			return out, err
+		}
+		_ = id
+		if before == nil {
+			out.Added++
+		}
+		if i%250 == 0 || i+1 == len(cat.Packages) {
+			send(Progress{Phase: "catalog", Done: i + 1, Total: len(cat.Packages), Message: pkg.Name})
+		}
+	}
+	send(Progress{Phase: "done", Message: fmt.Sprintf("Каталог: додано %d пакетів", out.Added)})
+	return out, nil
+}

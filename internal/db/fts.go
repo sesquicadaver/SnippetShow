@@ -82,18 +82,43 @@ func (s *Store) collectSnippets(programID int64) (string, error) {
 // Search runs an FTS5 query and returns matching programs ordered by rank.
 // Empty query returns an empty slice (caller may fall back to ListPrograms).
 func (s *Store) Search(query string) ([]SearchHit, error) {
+	return s.SearchFiltered(query, ProgramFilter{})
+}
+
+// SearchFiltered runs FTS5 with optional installed-only and alphabet filters (Phase 2).
+func (s *Store) SearchFiltered(query string, f ProgramFilter) ([]SearchHit, error) {
 	q := strings.TrimSpace(query)
 	if q == "" {
 		return nil, nil
 	}
-	// Escape FTS5 special tokens by quoting each token as a phrase prefix search.
 	ftsQuery := buildFTSQuery(q)
-	rows, err := s.db.Query(`
-SELECT p.id, p.name, COALESCE(p.summary,''), bm25(programs_fts) AS rank
+	sqlQ := `
+SELECT p.id, p.name, COALESCE(p.summary,''), COALESCE(bm25(programs_fts), 0) AS rank
 FROM programs_fts
 JOIN programs p ON p.id = programs_fts.rowid
-WHERE programs_fts MATCH ?
-ORDER BY rank`, ftsQuery)
+WHERE programs_fts MATCH ?`
+	args := []any{ftsQuery}
+	if f.InstalledOnly {
+		sqlQ += ` AND p.is_installed = 1`
+	}
+	letter := strings.TrimSpace(f.Letter)
+	switch {
+	case letter == "" || strings.EqualFold(letter, "all"):
+	case letter == "0-9":
+		sqlQ += ` AND substr(p.name, 1, 1) GLOB '[0-9]'`
+	default:
+		ch := strings.ToLower(letter)
+		if len([]rune(ch)) == 1 {
+			sqlQ += ` AND lower(substr(p.name, 1, 1)) = ?`
+			args = append(args, ch)
+		}
+	}
+	sqlQ += ` ORDER BY rank`
+	if f.Limit > 0 {
+		sqlQ += ` LIMIT ?`
+		args = append(args, f.Limit)
+	}
+	rows, err := s.db.Query(sqlQ, args...)
 	if err != nil {
 		return nil, fmt.Errorf("db: fts search: %w", err)
 	}

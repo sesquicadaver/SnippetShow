@@ -27,6 +27,11 @@ else
   exit 0
 fi
 
+if [[ -f frontend/package.json ]] && command -v npm >/dev/null 2>&1; then
+  echo "==> frontend build (embed)"
+  (cd frontend && npm ci --ignore-scripts >/dev/null && npm run build && touch dist/.gitkeep)
+fi
+
 echo "==> go vet ${GO_TAGS[*]:-} ./..."
 go vet "${GO_TAGS[@]}" ./...
 

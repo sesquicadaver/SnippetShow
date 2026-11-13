@@ -6,6 +6,54 @@ export function AppInfo() {
   return window['go']['main']['App']['AppInfo']();
 }
 
+export function DetectPackageManager() {
+  return window['go']['main']['App']['DetectPackageManager']();
+}
+
+export function EnsureIndexed() {
+  return window['go']['main']['App']['EnsureIndexed']();
+}
+
+export function GetProgram(arg1, arg2) {
+  return window['go']['main']['App']['GetProgram'](arg1, arg2);
+}
+
+export function GetRawMan(arg1) {
+  return window['go']['main']['App']['GetRawMan'](arg1);
+}
+
+export function InstallCommandFor(arg1) {
+  return window['go']['main']['App']['InstallCommandFor'](arg1);
+}
+
+export function ListInstalled() {
+  return window['go']['main']['App']['ListInstalled']();
+}
+
+export function ListPrograms(arg1) {
+  return window['go']['main']['App']['ListPrograms'](arg1);
+}
+
 export function PhaseStatus() {
   return window['go']['main']['App']['PhaseStatus']();
+}
+
+export function ScanInstalled() {
+  return window['go']['main']['App']['ScanInstalled']();
+}
+
+export function Search(arg1) {
+  return window['go']['main']['App']['Search'](arg1);
+}
+
+export function SearchPrograms(arg1) {
+  return window['go']['main']['App']['SearchPrograms'](arg1);
+}
+
+export function SyncRepoCatalog() {
+  return window['go']['main']['App']['SyncRepoCatalog']();
+}
+
+export function UpdateIndex() {
+  return window['go']['main']['App']['UpdateIndex']();
 }

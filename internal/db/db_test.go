@@ -195,6 +195,39 @@ func TestMarkNotInstalledKeepsSnippets(t *testing.T) {
 	}
 }
 
+func TestListProgramsFilteredAndSearchLetter(t *testing.T) {
+	s := openTemp(t)
+	for _, p := range []Program{
+		{Name: "alpha", Summary: "a tool", IsInstalled: true},
+		{Name: "beta", Summary: "b tool", IsInstalled: false},
+		{Name: "9base", Summary: "digit", IsInstalled: true},
+	} {
+		if _, err := s.UpsertProgram(p, false); err != nil {
+			t.Fatal(err)
+		}
+	}
+	all, err := s.ListProgramsFiltered(ProgramFilter{})
+	if err != nil || len(all) != 3 {
+		t.Fatalf("all=%v err=%v", all, err)
+	}
+	inst, err := s.ListProgramsFiltered(ProgramFilter{InstalledOnly: true})
+	if err != nil || len(inst) != 2 {
+		t.Fatalf("installed=%v err=%v", inst, err)
+	}
+	letterA, err := s.ListProgramsFiltered(ProgramFilter{Letter: "A"})
+	if err != nil || len(letterA) != 1 || letterA[0].Name != "alpha" {
+		t.Fatalf("letter A: %+v err=%v", letterA, err)
+	}
+	digits, err := s.ListProgramsFiltered(ProgramFilter{Letter: "0-9", InstalledOnly: true})
+	if err != nil || len(digits) != 1 || digits[0].Name != "9base" {
+		t.Fatalf("digits: %+v err=%v", digits, err)
+	}
+	hits, err := s.SearchFiltered("tool", ProgramFilter{InstalledOnly: true, Letter: "a"})
+	if err != nil || len(hits) != 1 || hits[0].Name != "alpha" {
+		t.Fatalf("fts filter: %+v err=%v", hits, err)
+	}
+}
+
 func TestUpsertResetsManParsedOnVersionChange(t *testing.T) {
 	s := openTemp(t)
 	id, err := s.UpsertProgram(Program{Name: "jq", Version: "1.6", IsInstalled: true}, false)
