@@ -16,3 +16,4 @@
 ## Примітки середовища
 
 - На Ubuntu 24.04+ для збірки Wails потрібен tag **`webkit2_41`** (пакет `libwebkit2gtk-4.1-dev`), бо `webkit2gtk-4.0` більше не постачається. Обгортка: `build/build.sh`.
+- Продукт **Linux-only**: каталоги `build/windows/` та `build/darwin/` не тримаємо в репо (ігнор у `.gitignore`, якщо Wails їх регенерує).

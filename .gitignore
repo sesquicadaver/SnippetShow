@@ -23,3 +23,7 @@ vendor/
 # Local env
 .env
 .env.*
+
+# Linux-only product: ignore regenerated Wails platform scaffolds
+build/windows/
+build/darwin/

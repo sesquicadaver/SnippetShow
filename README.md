@@ -12,6 +12,7 @@
 | GUI | Wails v2 + Vanilla JS (Vite) |
 | DB | SQLite (`modernc.org/sqlite`, FTS5) → `~/.local/share/linux-cmd-wiki/wiki.db` |
 | Ліцензія | MIT |
+| Ціль | **Linux-only** (Debian/Ubuntu, Arch, Fedora); без Windows/macOS артефактів у репо |
 
 ## Вимоги середовища
 
