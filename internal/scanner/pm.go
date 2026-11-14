@@ -38,6 +38,7 @@ func (s *Scanner) lookupDpkg(ctx context.Context, binPath, binName string) (*pkg
 	} else if len(parts) >= 3 {
 		m.Summary = shortDesc(parts[2])
 	}
+	// Per-binary path does not load Section; bulk enrich fills category (D13.9).
 	return m, nil
 }
 

@@ -225,6 +225,7 @@ type pkgMeta struct {
 	PackageName string
 	Version     string
 	Summary     string
+	Section     string // raw dpkg Section / pacman group (D13.8)
 }
 
 func (s *Scanner) lookupPackage(ctx context.Context, pm PackageManager, binName, binPath string) (*pkgMeta, error) {

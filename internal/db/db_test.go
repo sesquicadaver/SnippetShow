@@ -56,7 +56,8 @@ func TestOpenCreatesSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"id", "name", "package_name", "summary", "version", "is_installed", "man_parsed"}
+	want := []string{"id", "name", "package_name", "summary", "version", "is_installed", "man_parsed",
+		"is_favorite", "category", "man_status"}
 	if len(cols) != len(want) {
 		t.Fatalf("programs cols=%v want=%v", cols, want)
 	}

@@ -98,12 +98,15 @@ func (s *Store) SearchFiltered(query string, f ProgramFilter) ([]SearchHit, erro
 	ftsQuery := buildFTSQuery(q)
 	sqlQ := `
 SELECT p.id, p.name, COALESCE(p.package_name,''), COALESCE(p.summary,''), COALESCE(p.version,''),
-       p.is_installed, p.man_parsed, COALESCE(bm25(programs_fts), 0) AS rank
+       p.is_installed, p.man_parsed, p.is_favorite, COALESCE(p.category,''), COALESCE(p.man_status,'unknown'),
+       COALESCE(bm25(programs_fts), 0) AS rank
 FROM programs_fts
 JOIN programs p ON p.id = programs_fts.rowid
 WHERE programs_fts MATCH ?`
 	args := []any{ftsQuery}
-	if f.InstalledOnly {
+	if f.FavoritesOnly {
+		sqlQ += ` AND p.is_favorite = 1`
+	} else if f.InstalledOnly {
 		sqlQ += ` AND p.is_installed = 1`
 	}
 	letter := strings.TrimSpace(f.Letter)
@@ -118,6 +121,14 @@ WHERE programs_fts MATCH ?`
 			args = append(args, ch)
 		}
 	}
+	if cat := strings.TrimSpace(f.Category); cat != "" {
+		sqlQ += ` AND p.category = ?`
+		args = append(args, cat)
+	}
+	if f.NoManOnly {
+		sqlQ += ` AND p.man_status = ?`
+		args = append(args, ManStatusAbsent)
+	}
 	sqlQ += ` ORDER BY rank`
 	if f.Limit > 0 {
 		sqlQ += ` LIMIT ?`
@@ -131,15 +142,19 @@ WHERE programs_fts MATCH ?`
 	var hits []SearchHit
 	for rows.Next() {
 		var h SearchHit
-		var installed, manParsed int
+		var installed, manParsed, favorite int
 		if err := rows.Scan(
 			&h.ProgramID, &h.Name, &h.PackageName, &h.Summary, &h.Version,
-			&installed, &manParsed, &h.Rank,
+			&installed, &manParsed, &favorite, &h.Category, &h.ManStatus, &h.Rank,
 		); err != nil {
 			return nil, err
 		}
 		h.IsInstalled = installed == 1
 		h.ManParsed = manParsed == 1
+		h.IsFavorite = favorite == 1
+		if h.ManStatus == "" {
+			h.ManStatus = ManStatusUnknown
+		}
 		hits = append(hits, h)
 	}
 	return hits, rows.Err()

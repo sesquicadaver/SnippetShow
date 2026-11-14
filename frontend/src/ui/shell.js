@@ -57,6 +57,9 @@ class WikiApp {
     this.mode = 'installed';
     this.letter = 'all';
     this.query = '';
+    this.category = '';
+    this.categories = [];
+    this.noMan = false;
     this.programs = [];
     this.selected = null;
     this.detail = null;
@@ -128,6 +131,9 @@ class WikiApp {
       mode: this.mode,
       letter: this.letter,
       query: this.query,
+      category: this.category,
+      categories: this.categories,
+      noMan: this.noMan,
       busy: this.busy,
       status: this.status,
       progress: this.progress,
@@ -146,6 +152,14 @@ class WikiApp {
         clearTimeout(this._searchTimer);
         this._searchTimer = setTimeout(() => this.reloadList(), SEARCH_DEBOUNCE_MS);
       },
+      onCategory: (category) => {
+        this.category = category || '';
+        this.reloadList();
+      },
+      onNoMan: (on) => {
+        this.noMan = !!on;
+        this.reloadList();
+      },
       onUpdate: () => this.runUpdate(),
       onCancel: () => this.cancelIndex(),
       onSyncCatalog: () => this.runCatalog(),
@@ -161,6 +175,7 @@ class WikiApp {
       mode: this.mode,
       loading: this.listLoading,
       onSelect: (name) => this.selectProgram(name),
+      onFavorite: (name, on) => this.setFavorite(name, on),
     });
   }
 
@@ -214,6 +229,7 @@ class WikiApp {
         this.confirm = null;
         this.paintWiki();
       },
+      onFavorite: (name, on) => this.setFavorite(name, on),
     });
   }
 
@@ -250,7 +266,36 @@ class WikiApp {
       mode: this.mode,
       letter: this.letter,
       query: this.query,
+      category: this.category,
+      noMan: this.noMan,
     };
+  }
+
+  async refreshCategories() {
+    if (!hasWails() || this.mode === 'all') return;
+    try {
+      this.categories = await AppAPI.ListCategories() || [];
+      this.paintToolbar();
+    } catch {
+      // ignore
+    }
+  }
+
+  async setFavorite(name, on) {
+    if (!name || !hasWails()) return;
+    try {
+      await AppAPI.SetFavorite(name, !!on);
+      this.status = on ? uk.favoriteAdd : uk.favoriteRemove;
+      await this.reloadList();
+      if (this.selected === name) {
+        await this.selectProgram(name);
+      } else {
+        this.paintNavigator();
+      }
+      this.paintToolbar();
+    } catch (err) {
+      this.showToast(`${uk.statusError}: ${err?.message || err}`);
+    }
   }
 
   async reloadList() {
@@ -273,6 +318,7 @@ class WikiApp {
     this.listLoading = false;
     this.paintToolbar();
     this.paintNavigator();
+    this.refreshCategories();
   }
 
   async selectProgram(name) {
@@ -757,14 +803,15 @@ class WikiApp {
 }
 
 /**
- * SS-27: on-demand man parse only for installed rows that are not cached yet.
- * Unknown row → parse (safe). Uninstalled / already parsed → skip.
- * @param {{isInstalled?: boolean, manParsed?: boolean}|null|undefined} row
+ * SS-27 / D13: man parse only for favorites that are not yet parsed/absent.
+ * @param {{isInstalled?: boolean, manParsed?: boolean, isFavorite?: boolean, manStatus?: string}|null|undefined} row
  * @returns {boolean}
  */
 export function programNeedsManParse(row) {
-  if (!row) return true;
-  return !!(row.isInstalled && !row.manParsed);
+  if (!row) return false;
+  if (!row.isInstalled || !row.isFavorite) return false;
+  if (row.manParsed || row.manStatus === 'absent') return false;
+  return true;
 }
 
 function fmt(template, vars) {

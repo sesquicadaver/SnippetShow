@@ -26,6 +26,28 @@ export function renderWiki(host, state) {
   }
 
   const p = detail.program;
+  // D13.4: non-favorite installed command — prompt to «Обрати», no man.
+  if (detail.needsFavorite && p.isInstalled && p.kind !== 'package') {
+    host.innerHTML = `
+      <section class="wiki-panel">
+        <header class="wiki-header">
+          <h2>${esc(p.name)}</h2>
+          <p class="wiki-sub">${esc(p.summary || '')}${p.category ? ` · ${esc(p.category)}` : ''}</p>
+        </header>
+        <div class="install-block">
+          <p>${esc(uk.needsFavoriteHint)}</p>
+          <div class="row-actions">
+            <button type="button" class="btn btn-primary" data-action="favorite-add">${esc(uk.favoriteAdd)}</button>
+          </div>
+        </div>
+        ${state.toast ? `<div class="toast" role="status">${esc(state.toast)}</div>` : ''}
+      </section>
+    `;
+    host.querySelector('[data-action="favorite-add"]')?.addEventListener('click', () => {
+      state.onFavorite?.(p.name, true);
+    });
+    return;
+  }
   // SS-29: repo packages (and uninstalled stubs) use the install panel, not man flags.
   if (!p.isInstalled || p.kind === 'package') {
     const title = p.kind === 'package' ? (uk.packageTitle || uk.installTitle) : uk.installTitle;

@@ -1,4 +1,4 @@
-// Package index orchestrates incremental program index updates (Phase 1 / ТЗ §2.3).
+// Package index orchestrates incremental program index updates (Phase 1 / ТЗ §2.3 + D13).
 package index
 
 import (
@@ -33,13 +33,12 @@ type Updater struct {
 	Store   *db.Store
 	Scanner *scanner.Scanner
 	Parser  *manparser.Parser
-	// ParseOnUpdate, when true, parses man for new/changed programs during UpdateIndex.
+	// ParseOnUpdate, when true, reparses man for favorite programs on version change (D13.7).
 	ParseOnUpdate bool
 	Workers       int
 }
 
 // New builds an Updater with default OS-backed scanner/parser.
-// ParseOnUpdate is enabled so «Оновити індекс» reparses man on version change (H1 / ТЗ §2.3).
 func New(store *db.Store) *Updater {
 	return &Updater{
 		Store:         store,
@@ -50,23 +49,32 @@ func New(store *db.Store) *Updater {
 	}
 }
 
-// FirstRun performs a fast installed scan into programs with man_parsed=0 (P1-13).
+// FirstRun performs a fast names-only installed scan (D13.1 / P1-13).
 func (u *Updater) FirstRun(ctx context.Context) (UpdateResult, error) {
 	return u.syncInstalled(ctx, false, nil)
 }
 
-// UpdateIndex diffs installed programs vs DB: add, reparse on version change,
-// mark missing as is_installed=0 without deleting snippets (P1-15).
+// UpdateIndex diffs installed programs vs DB: add, reparse favorites on version change,
+// mark missing as is_installed=0 without deleting snippets (P1-15 / D13.7).
 func (u *Updater) UpdateIndex(ctx context.Context) (UpdateResult, error) {
 	return u.UpdateIndexWithProgress(ctx, nil)
 }
 
 // UpdateIndexWithProgress is UpdateIndex with optional progress callbacks.
+// After the names pass it runs bulk metadata enrich (D13.9); favorite man reparse
+// happens inside EnrichMetadata on version change (D13.7).
 func (u *Updater) UpdateIndexWithProgress(ctx context.Context, progress chan<- Progress) (UpdateResult, error) {
-	return u.syncInstalled(ctx, u.ParseOnUpdate, progress)
+	res, err := u.syncInstalled(ctx, false, progress)
+	if err != nil {
+		return res, err
+	}
+	if err := u.EnrichMetadata(ctx, progress); err != nil {
+		return res, err
+	}
+	return res, nil
 }
 
-func (u *Updater) syncInstalled(ctx context.Context, parseChanged bool, progress chan<- Progress) (UpdateResult, error) {
+func (u *Updater) syncInstalled(ctx context.Context, parseFavorites bool, progress chan<- Progress) (UpdateResult, error) {
 	if u.Store == nil {
 		return UpdateResult{}, fmt.Errorf("index: nil store")
 	}
@@ -81,53 +89,47 @@ func (u *Updater) syncInstalled(ctx context.Context, parseChanged bool, progress
 	}
 	send(Progress{Phase: "scan", Message: "Сканування встановлених програм"})
 
-	progs, err := u.Scanner.ScanInstalled(ctx)
+	names, err := u.Scanner.ScanExecutableNames()
 	if err != nil {
 		return UpdateResult{}, err
 	}
-	res := UpdateResult{InstalledSeen: len(progs)}
-	keep := make([]string, 0, len(progs))
+	res := UpdateResult{InstalledSeen: len(names)}
+	keep := make([]string, 0, len(names))
 	var toParse []string
 
-	for i, ip := range progs {
-		keep = append(keep, ip.Name)
-		existing, err := u.Store.GetProgramByName(ip.Name)
+	for i, name := range names {
+		keep = append(keep, name)
+		existing, err := u.Store.GetProgramByName(name)
 		resetMan := false
 		isNew := false
+		wasFavorite := false
 		if err != nil {
 			isNew = true
-		} else if existing.Version != "" && ip.Version != "" && existing.Version != ip.Version {
-			resetMan = true
-			res.Updated++
-		} else if !existing.IsInstalled {
-			res.Updated++
-		}
-
-		summary := ip.Summary
-		if summary == "" && isNew {
-			if s, err := u.Parser.Summary(ctx, ip.Name); err == nil {
-				summary = s
+		} else {
+			wasFavorite = existing.IsFavorite
+			if existing.Version != "" {
+				// Version compare happens after background enrich; here we only upsert presence.
+			}
+			if !existing.IsInstalled {
+				res.Updated++
 			}
 		}
 
-		id, err := u.Store.UpsertProgram(db.Program{
-			Name:        ip.Name,
-			PackageName: ip.PackageName,
-			Summary:     summary,
-			Version:     ip.Version,
+		_, err = u.Store.UpsertProgram(db.Program{
+			Name:        name,
 			IsInstalled: true,
+			ManStatus:   db.ManStatusUnknown,
 		}, resetMan)
 		if err != nil {
 			return res, err
 		}
-		_ = id
 		if isNew {
 			res.Added++
 		}
-		if parseChanged && (isNew || resetMan) {
-			toParse = append(toParse, ip.Name)
+		if parseFavorites && wasFavorite && resetMan {
+			toParse = append(toParse, name)
 		}
-		send(Progress{Phase: "upsert", Done: i + 1, Total: len(progs), Message: ip.Name})
+		send(Progress{Phase: "upsert", Done: i + 1, Total: len(names), Message: name})
 	}
 
 	n, err := u.Store.MarkNotInstalledExcept(keep)
@@ -136,7 +138,7 @@ func (u *Updater) syncInstalled(ctx context.Context, parseChanged bool, progress
 	}
 	res.MarkedGone = int(n)
 
-	if parseChanged && len(toParse) > 0 {
+	if parseFavorites && len(toParse) > 0 {
 		parsed, err := u.parseMany(ctx, toParse, send)
 		res.Parsed = parsed
 		if err != nil {
@@ -145,6 +147,94 @@ func (u *Updater) syncInstalled(ctx context.Context, parseChanged bool, progress
 	}
 	send(Progress{Phase: "done", Message: fmt.Sprintf("Оновлено %d пакетів", res.Added+res.Updated+res.MarkedGone)})
 	return res, nil
+}
+
+// EnrichMetadata applies bulk PM Section / summary / man presence (D13.8–D13.9).
+func (u *Updater) EnrichMetadata(ctx context.Context, progress chan<- Progress) error {
+	if u.Store == nil {
+		return fmt.Errorf("index: nil store")
+	}
+	send := func(p Progress) {
+		if progress == nil {
+			return
+		}
+		select {
+		case progress <- p:
+		case <-ctx.Done():
+		}
+	}
+	send(Progress{Phase: "enrich", Message: "Збагачення метаданих (Section / man)"})
+	rows, err := u.Scanner.EnrichInstalled(ctx)
+	if err != nil {
+		return err
+	}
+	var reparse []string
+	for i, e := range rows {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+		prev, _ := u.Store.GetProgramByName(e.Name)
+		status := db.ManStatusAbsent
+		if e.HasMan {
+			if prev != nil && prev.ManStatus == db.ManStatusParsed {
+				status = db.ManStatusParsed
+			} else {
+				status = db.ManStatusUnknown
+			}
+		}
+		_ = u.Store.UpdateProgramMeta(e.Name, e.PackageName, e.Summary, e.Version, e.Category, status)
+		if !e.HasMan {
+			if p, err := u.Store.GetProgramByName(e.Name); err == nil {
+				_ = u.Store.SetManStatus(p.ID, db.ManStatusAbsent, false)
+			}
+		}
+		// D13.7: version change on a favorite → reparse man.
+		if prev != nil && prev.IsFavorite && e.Version != "" && prev.Version != "" && prev.Version != e.Version {
+			reparse = append(reparse, e.Name)
+		}
+		send(Progress{Phase: "enrich", Done: i + 1, Total: len(rows), Message: e.Name})
+	}
+	if len(reparse) > 0 {
+		_, _ = u.parseMany(ctx, reparse, send)
+	}
+	send(Progress{Phase: "done", Message: "Метадані оновлено"})
+	return nil
+}
+
+// SetFavorite marks/unmarks a PATH command and parses or purges man (D13.3–D13.5).
+func (u *Updater) SetFavorite(ctx context.Context, name string, on bool) (*db.Program, error) {
+	if u.Store == nil {
+		return nil, fmt.Errorf("index: nil store")
+	}
+	p, err := u.Store.GetProgramByName(name)
+	if err != nil {
+		return nil, err
+	}
+	if !p.IsInstalled {
+		return nil, fmt.Errorf("обрані лише для встановлених PATH-команд (D13.6)")
+	}
+	if !on {
+		if err := u.Store.ClearManCommands(p.ID); err != nil {
+			return nil, err
+		}
+		return u.Store.SetFavorite(name, false)
+	}
+	if _, err := u.Store.SetFavorite(name, true); err != nil {
+		return nil, err
+	}
+	// Parse man into DB on favorite (D13.3).
+	if err := u.ParseProgram(ctx, name); err != nil {
+		if p2, gerr := u.Store.GetProgramByName(name); gerr == nil {
+			_ = u.Store.SetManStatus(p2.ID, db.ManStatusAbsent, false)
+			p2.ManStatus = db.ManStatusAbsent
+			p2.IsFavorite = true
+			return p2, nil // soft-fail: favorite kept without man (D13.11)
+		}
+		return nil, err
+	}
+	return u.Store.GetProgramByName(name)
 }
 
 // parseMany parses man pages via the worker pool (M1 / ТЗ §2.2) and persists results.
@@ -173,10 +263,12 @@ func (u *Updater) parseMany(ctx context.Context, names []string, send func(Progr
 	parsed := 0
 	for _, pr := range results {
 		if pr.Err != nil {
+			if p, err := u.Store.GetProgramByName(pr.Command); err == nil {
+				_ = u.Store.SetManStatus(p.ID, db.ManStatusAbsent, false)
+			}
 			continue
 		}
 		if err := u.applyParsedOptions(ctx, pr.Command, pr.Options); err != nil {
-			// Soft-fail individual man pages (same policy as sequential ParseProgram).
 			send(Progress{Phase: "parse", Done: pr.Done, Total: pr.Total, Message: pr.Command + ": " + err.Error()})
 			continue
 		}
@@ -203,6 +295,10 @@ func (u *Updater) applyParsedOptions(ctx context.Context, name string, opts []ma
 	if !p.IsInstalled {
 		return fmt.Errorf("index: man parse skipped for uninstalled %q (D6)", name)
 	}
+	if len(opts) == 0 {
+		_ = u.Store.SetManStatus(p.ID, db.ManStatusAbsent, false)
+		return fmt.Errorf("man без прапорців для %q", name)
+	}
 	cmds := make([]db.ManCommand, 0, len(opts))
 	for _, o := range opts {
 		cmds = append(cmds, db.ManCommand{Flag: o.Flag, Description: o.Description})
@@ -215,6 +311,8 @@ func (u *Updater) applyParsedOptions(ctx context.Context, name string, opts []ma
 			Version:     p.Version,
 			IsInstalled: true,
 			ManParsed:   true,
+			Category:    p.Category,
+			ManStatus:   db.ManStatusParsed,
 		}, false)
 	}
 	return u.Store.ReplaceManCommands(p.ID, cmds)
@@ -243,7 +341,6 @@ type CatalogSyncResult struct {
 }
 
 // SyncRepoCatalog upserts distribution packages into the packages table (SS-29 / D10).
-// PATH commands in programs are unchanged; mode «all» reads packages.
 func (u *Updater) SyncRepoCatalog(ctx context.Context, progress chan<- Progress) (CatalogSyncResult, error) {
 	if u.Store == nil {
 		return CatalogSyncResult{}, fmt.Errorf("index: nil store")

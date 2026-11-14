@@ -51,7 +51,8 @@
 | FIX-L4 | `staticcheck` обов’язковий у CI / ci-local | SS-28; pin `2026.2.2`; fail якщо відсутній |
 | FIX-SS-30 | Повільний ввід у пошук / BASH editor (фокус, lag) | incremental toolbar+builder; soft `reloadList`; rAF highlight |
 | DEC-D13 | Обрані + man-gate + Section + «Без man» | **D13.1–D13.11** затверджено (2026-11-14); сирі Section; category bulk у фоні; фільтр «Без man» |
-| FIX-SS-31 | Модель Обрані / man-gate (рішення) | **done** (docs); код — наступний OPEN цикл |
+| FIX-SS-31 | Модель Обрані / man-gate (рішення) | **done** (docs D13.1–D13.11) |
+| FIX-SS-32 | Імплементація Обрані / man-gate | schema v3; names-only scan; SetFavorite+purge; Section enrich; UI |
 
 ## Backlog (після v0.1 / відкладено)
 
