@@ -50,6 +50,8 @@
 | FIX-SS-26 | Brace-опції man (`-ao{a\|s\|t\|u}`) | expand у manparser + Wiki; опис «(варіант: …)» |
 | FIX-L4 | `staticcheck` обов’язковий у CI / ci-local | SS-28; pin `2026.2.2`; fail якщо відсутній |
 | FIX-SS-30 | Повільний ввід у пошук / BASH editor (фокус, lag) | incremental toolbar+builder; soft `reloadList`; rAF highlight |
+| DEC-D13 | Обрані + man-gate | **D13.1–D13.7** затверджено (2026-11-14); purge man on unfavorite; імплементація — наступний цикл |
+| FIX-SS-31 | Модель Обрані / man-gate (рішення) | docs `DECISIONS` D13; категорії/«Без man» ще open |
 
 ## Backlog (після v0.1 / відкладено)
 

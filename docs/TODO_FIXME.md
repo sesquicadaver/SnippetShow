@@ -64,6 +64,7 @@
 | SS-28 | `staticcheck` optional / skipped у CI | **done** — обов’язковий install+run у Actions і `ci-local` (FIX-L4) |
 | SS-29 | Пакет ≠ команда в режимі «Всі» (M11 / D10) | **done** — таблиця `packages` + mode all; PATH лишається в `programs` |
 | SS-30 | Паузи/втрата фокусу в пошуку; повільний ввід у BASH editor | **done** — incremental toolbar/builder; soft list reload; rAF highlight; `ui_input_lag_test.mjs` |
+| SS-31 | Модель «Обрані» + man-gate (+ категорії / без man) | **partial** — D13.1–D13.7 затверджено (`DECISIONS`); A2=purge man; B/C (категорії, «Без man») ще open |
 
 ## Відомі обмеження Core / Wiki / Builder
 
