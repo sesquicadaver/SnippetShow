@@ -44,6 +44,7 @@
 | FIX-SS-20 | Run argv: зайва кома з man-синтаксису | `NormalizeFlagList`; Wiki `commandFromFlag` |
 | FIX-SS-21 | Run з редактора BASH (втрачені правки / usage-only) | keep-focus на actions; sync SetScriptBody перед Run |
 | FIX-M10 | Vite 6.4.6; `npm audit` 0 vulns (було high на 5.4.x) | SS-22; `frontend/package.json` + lock |
+| FIX-SS-23 | Navigator scroll: список зникав через stale closure | `host._navState` + `navigator_test.mjs` |
 
 ## Backlog (після v0.1 / відкладено)
 

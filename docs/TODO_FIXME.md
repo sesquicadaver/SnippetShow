@@ -57,6 +57,7 @@
 | M7 | Confirm gate trust-UI (DevTools `confirmed`) | **documented** — SAFE-02 / DECISIONS |
 | SS-20 | Run argv з man: кома в прапорці (`--audible,` / `-a, --all`) | **done** — `NormalizeFlagList` + `normalizeManFlag` у Wiki Run/Copy/Script |
 | SS-21 | Run з редактора BASH: blur→repaint губив правки; 2ping без host = usage/help | **done** — mousedown keep-focus + SetScriptBody перед RunScript; підказка в Builder |
+| SS-23 | Скрол списку програм → список зникає | **done** — scroll paint з `host._navState` (не closure першого render); `navigator_test.mjs` |
 
 ## Відомі обмеження Core / Wiki / Builder
 
