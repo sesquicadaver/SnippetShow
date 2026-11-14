@@ -1,5 +1,7 @@
 # Dist notes — Arch / Manjaro / EndeavourOS
 
+**Політика v0.1 (D12):** Arch smoke **не обов’язковий** для тегу. Статус: **deferred** — після готовності базової системи (зафіксовано 2026-11-14). Best-effort нотатки нижче лишаються валідними.
+
 ## Runtime / build deps
 
 ```bash
@@ -17,15 +19,17 @@ sudo pacman -S base-devel gtk3 webkit2gtk go npm
 # артефакт: build/bin/SnippetShow
 ```
 
-## Smoke checklist (P4-17)
+## Smoke checklist (P4-17) — deferred
 
-1. [ ] Запуск ELF
-2. [ ] First-run scan
-3. [ ] Пошук (`pacman`-встановлена утиліта, напр. `ls`)
-4. [ ] «Оновити індекс»
-5. [ ] Сніпет → Copy → Run (`echo ok`)
-6. [ ] Script export `.sh` + виконуваність
-7. [ ] JSON backup export/import
+1. [ ] Запуск ELF — *deferred (D12)*
+2. [ ] First-run scan — *deferred (D12)*
+3. [ ] Пошук (`pacman`-встановлена утиліта, напр. `ls`) — *deferred (D12)*
+4. [ ] «Оновити індекс» — *deferred (D12)*
+5. [ ] Сніпет → Copy → Run (`echo ok`) — *deferred (D12)*
+6. [ ] Script export `.sh` + виконуваність — *deferred (D12)*
+7. [ ] JSON backup export/import — *deferred (D12)*
+
+Повторний прогін: після Ubuntu-стабілізації; трекінг `FIX-M9-Arch` у `docs/ROADMAP_FIXES.md`.
 
 ## Каталог «Всі програми»
 
