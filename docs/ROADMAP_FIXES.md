@@ -6,7 +6,6 @@
 
 | ID | Тема | Нотатка |
 |----|------|---------|
-| FIX-L4 | `staticcheck` обов’язковий у CI (fail якщо відсутній) | quality gate |
 | FIX-M11-split | Розділення моделі package ≠ command | **D10** — імплементація після tooling |
 
 Порядок Autopilot: зверху вниз у таблиці OPEN.
@@ -48,6 +47,7 @@
 | FIX-SS-27 | UI lag на вибір програми (~2 с) | без `reloadList` у select; parse лише якщо !manParsed |
 | FIX-SS-25 | Run `[ --help`: bash builtin → `/usr/bin/[` | `ResolveBuiltinShadows` + Wiki `shellSafeProgram` |
 | FIX-SS-26 | Brace-опції man (`-ao{a\|s\|t\|u}`) | expand у manparser + Wiki; опис «(варіант: …)» |
+| FIX-L4 | `staticcheck` обов’язковий у CI / ci-local | SS-28; pin `2026.2.2`; fail якщо відсутній |
 
 ## Backlog (після v0.1 / відкладено)
 

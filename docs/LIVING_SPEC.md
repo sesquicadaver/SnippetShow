@@ -4,7 +4,7 @@
 
 | ТЗ§ | Вимога (коротко) | Модуль | Тест | Статус |
 |-----|------------------|--------|------|--------|
-| §1 | Go 1.22+ / Wails v2 / SQLite modernc / ELF + webkit2gtk | `main.go`, `wails.json`, `go.mod`, `build/build.sh` | `scripts/ci-local.sh`, CI workflow | done |
+| §1 | Go 1.22+ / Wails v2 / SQLite modernc / ELF + webkit2gtk; staticcheck gate (SS-28) | `main.go`, `wails.json`, `go.mod`, `build/build.sh` | `scripts/ci-local.sh` (required staticcheck), `.github/workflows/ci.yml` | done |
 | §1 | Платформи Debian/Ubuntu, Arch, Fedora (лише Linux) | README; `build/dist-notes-*.md`; `scripts/ubuntu-dist-smoke.sh` | Ubuntu P4-16 checked (D12); Arch/Fedora deferred | done (Ubuntu); deferred (Arch/Fedora) |
 | §2.1 | System Scanner (PM + PATH + repo catalog batch upsert/FTS) | `internal/scanner`, `internal/db`, `internal/index` | `scanner_test.go`, `db_test.go`, `index_test.go` | done |
 | §2.2 | Man Parser (whatis, raw, OPTIONS regex, pool 4–8 у UpdateIndex); Run argv без ком (SS-20); `[`/`test` → `/usr/bin/*` (SS-25); brace-опції `{a\|s\|…}` (SS-26) | `internal/manparser`, `internal/scriptbuilder`, `frontend/src/ui/wiki.js` | `braces_test.go`, `builtins_test.go`, `wiki_flag_test.mjs` | done |

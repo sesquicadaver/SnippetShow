@@ -5,6 +5,31 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+# Pinned release used by FIX-L4 / SS-28 (must match Actions install).
+STATICCHECK_VERSION="${STATICCHECK_VERSION:-2026.2.2}"
+
+ensure_staticcheck() {
+  export PATH="$(go env GOPATH)/bin:${PATH}"
+  if command -v staticcheck >/dev/null 2>&1; then
+    return 0
+  fi
+  echo "==> installing staticcheck@${STATICCHECK_VERSION} (FIX-L4 required)"
+  go install "honnef.co/go/tools/cmd/staticcheck@${STATICCHECK_VERSION}"
+  export PATH="$(go env GOPATH)/bin:${PATH}"
+  if ! command -v staticcheck >/dev/null 2>&1; then
+    echo "ci-local: staticcheck is required but not on PATH after install" >&2
+    exit 1
+  fi
+}
+
+run_staticcheck() {
+  ensure_staticcheck
+  local target="$1"
+  shift
+  echo "==> staticcheck $* ${target}"
+  staticcheck "$@" "$target"
+}
+
 GO_TAGS=()
 if pkg-config --exists webkit2gtk-4.1 2>/dev/null; then
   GO_TAGS=(-tags webkit2_41)
@@ -19,12 +44,7 @@ else
   go test ./internal/...
   echo "==> FTS@3000 latency gate (TestFTSLatencyAt3000, budget ≤50ms)"
   go test ./internal/db -run '^TestFTSLatencyAt3000$' -count=1 -v
-  if command -v staticcheck >/dev/null 2>&1; then
-    echo "==> staticcheck ./internal/..."
-    staticcheck ./internal/...
-  else
-    echo "==> staticcheck skipped (not installed)"
-  fi
+  run_staticcheck "./internal/..."
   if command -v node >/dev/null 2>&1; then
     echo "==> frontend unit tests (navigator/shell)"
     node --test frontend/src/ui/*_test.mjs
@@ -52,11 +72,10 @@ go test "${GO_TAGS[@]}" ./...
 echo "==> FTS@3000 latency gate (TestFTSLatencyAt3000, budget ≤50ms)"
 go test ./internal/db -run '^TestFTSLatencyAt3000$' -count=1 -v
 
-if command -v staticcheck >/dev/null 2>&1; then
-  echo "==> staticcheck ./..."
-  staticcheck ./...
+if [[ ${#GO_TAGS[@]} -gt 0 ]]; then
+  run_staticcheck "./..." "${GO_TAGS[@]}"
 else
-  echo "==> staticcheck skipped (not installed)"
+  run_staticcheck "./..."
 fi
 
 echo "ci-local: OK"

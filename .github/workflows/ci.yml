@@ -45,5 +45,15 @@ jobs:
       - name: Test
         run: go test -tags webkit2_41 ./...
 
+      - name: Install staticcheck (FIX-L4 / SS-28)
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@2026.2.2
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: staticcheck
+        run: staticcheck -tags webkit2_41 ./...
+
       - name: Local CI script
         run: ./scripts/ci-local.sh
+        env:
+          STATICCHECK_VERSION: "2026.2.2"
