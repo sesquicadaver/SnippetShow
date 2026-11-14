@@ -49,6 +49,7 @@
 | FIX-SS-25 | Run `[ --help`: bash builtin → `/usr/bin/[` | `ResolveBuiltinShadows` + Wiki `shellSafeProgram` |
 | FIX-SS-26 | Brace-опції man (`-ao{a\|s\|t\|u}`) | expand у manparser + Wiki; опис «(варіант: …)» |
 | FIX-L4 | `staticcheck` обов’язковий у CI / ci-local | SS-28; pin `2026.2.2`; fail якщо відсутній |
+| FIX-SS-30 | Повільний ввід у пошук / BASH editor (фокус, lag) | incremental toolbar+builder; soft `reloadList`; rAF highlight |
 
 ## Backlog (після v0.1 / відкладено)
 
