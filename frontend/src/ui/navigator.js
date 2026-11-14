@@ -4,6 +4,34 @@ const ROW_H = 36;
 const OVERSCAN = 12;
 
 /**
+ * Visible index range for the virtualized navigator window.
+ * Exported for unit tests (SS-23).
+ * @param {number} scrollTop
+ * @param {number} viewH
+ * @param {number} count
+ * @param {number} [rowH]
+ * @param {number} [overscan]
+ * @returns {{start:number,end:number}}
+ */
+export function windowRange(scrollTop, viewH, count, rowH = ROW_H, overscan = OVERSCAN) {
+  const safeCount = Math.max(0, count | 0);
+  const safeView = Math.max(1, viewH || 400);
+  const start = Math.max(0, Math.floor((scrollTop || 0) / rowH) - overscan);
+  const visible = Math.ceil(safeView / rowH) + overscan * 2;
+  const end = Math.min(safeCount, start + visible);
+  return { start, end };
+}
+
+/**
+ * Always prefer the latest state stored on the host.
+ * Scroll handlers must not close over the first renderNavigator state (SS-23).
+ * @param {HTMLElement|{_navState?: object}} host
+ */
+export function resolveNavState(host) {
+  return host?._navState ?? null;
+}
+
+/**
  * Virtualized left-panel program list.
  * @param {HTMLElement} host
  * @param {{
@@ -17,6 +45,9 @@ const OVERSCAN = 12;
 export function renderNavigator(host, state) {
   const programs = state.programs || [];
   const emptyHint = state.mode === 'all' ? uk.emptyAllHint : uk.emptyInstalledHint;
+
+  // Keep latest state before any early return so scroll repaints stay current (SS-23).
+  host._navState = state;
 
   if (!host.dataset.ready) {
     host.innerHTML = `
@@ -38,7 +69,8 @@ export function renderNavigator(host, state) {
     `;
     host.dataset.ready = '1';
     const scroll = host.querySelector('.nav-scroll');
-    scroll.addEventListener('scroll', () => paintWindow(host, state), { passive: true });
+    // Do not close over `state` — first call is often loading/empty.
+    scroll.addEventListener('scroll', () => paintWindow(host), { passive: true });
   }
 
   const countEl = host.querySelector('.nav-count');
@@ -62,12 +94,11 @@ export function renderNavigator(host, state) {
 
   emptyEl.hidden = true;
   scroll.hidden = false;
-  host._navState = state;
-  paintWindow(host, state);
+  paintWindow(host);
 }
 
-function paintWindow(host, state) {
-  const st = state || host._navState;
+function paintWindow(host) {
+  const st = resolveNavState(host);
   if (!st) return;
   const programs = st.programs || [];
   const scroll = host.querySelector('.nav-scroll');
@@ -77,9 +108,7 @@ function paintWindow(host, state) {
 
   spacer.style.height = `${programs.length * ROW_H}px`;
   const viewH = scroll.clientHeight || 400;
-  const start = Math.max(0, Math.floor(scroll.scrollTop / ROW_H) - OVERSCAN);
-  const visible = Math.ceil(viewH / ROW_H) + OVERSCAN * 2;
-  const end = Math.min(programs.length, start + visible);
+  const { start, end } = windowRange(scroll.scrollTop, viewH, programs.length);
 
   win.style.transform = `translateY(${start * ROW_H}px)`;
   const rows = [];
