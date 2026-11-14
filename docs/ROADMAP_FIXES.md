@@ -32,7 +32,7 @@
 | FIX-M4 | FTS ListPrograms без N+1 | `SearchHit` несе колонки programs |
 | FIX-L1 | Wiki uncheck → remove from draft | `RemoveFromScript` / `RemoveCommand` |
 
-## DONE (рішення / dist smoke / NFR)
+## DONE (рішення / dist smoke / NFR / bugfix)
 
 | ID | Тема | Нотатка |
 |----|------|---------|
@@ -42,6 +42,7 @@
 | DEC-D12 | Dist smoke Ubuntu-first | Arch/Fedora deferred / best-effort |
 | FIX-M9-Ubuntu | Dist smoke Ubuntu + checked `build/dist-notes-ubuntu.md` | `scripts/ubuntu-dist-smoke.sh`; NFR факти 2026-11-14 |
 | FIX-FTS-3k | Бенч/gate FTS @ ~3000 programs ≤ 50 ms | `TestFTSLatencyAt3000` + `BenchmarkSearchAt3000`; avg ≪ 50 ms; `ci-local.sh` |
+| FIX-SS-20 | Run argv: зайва кома з man-синтаксису | `NormalizeFlagList`; Wiki `commandFromFlag` |
 
 ## Backlog (після v0.1 / відкладено)
 

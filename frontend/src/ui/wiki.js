@@ -187,8 +187,22 @@ function actionButtons(command, key) {
   `;
 }
 
+/**
+ * Man OPTIONS often list alternatives as "-a, --all" or leave a trailing comma
+ * ("--audible,"). Shell argv must not keep those commas (SS-20 / 2ping fail).
+ * @param {string} flag
+ * @returns {string}
+ */
+export function normalizeManFlag(flag) {
+  return String(flag || '')
+    .split(/,\s*(?=[-−])/)
+    .map((s) => s.trim().replace(/[,，]+$/g, ''))
+    .filter(Boolean)
+    .join(' ');
+}
+
 function commandFromFlag(program, flag) {
-  const f = String(flag || '').trim();
+  const f = normalizeManFlag(flag);
   if (!f) return program;
   if (f.startsWith(program + ' ') || f === program) return f;
   return `${program} ${f}`;
