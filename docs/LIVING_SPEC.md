@@ -5,7 +5,7 @@
 | ТЗ§ | Вимога (коротко) | Модуль | Тест | Статус |
 |-----|------------------|--------|------|--------|
 | §1 | Go 1.22+ / Wails v2 / SQLite modernc / ELF + webkit2gtk | `main.go`, `wails.json`, `go.mod`, `build/build.sh` | `scripts/ci-local.sh`, CI workflow | done |
-| §1 | Платформи Debian/Ubuntu, Arch, Fedora (лише Linux) | README; `build/dist-notes-*.md`; без `build/windows`/`build/darwin` | dist smoke чеклісти | done |
+| §1 | Платформи Debian/Ubuntu, Arch, Fedora (лише Linux) | README; `build/dist-notes-*.md`; `scripts/ubuntu-dist-smoke.sh` | Ubuntu P4-16 checked (D12); Arch/Fedora deferred | done (Ubuntu); deferred (Arch/Fedora) |
 | §2.1 | System Scanner (PM + PATH + repo catalog batch upsert/FTS) | `internal/scanner`, `internal/db`, `internal/index` | `scanner_test.go`, `db_test.go`, `index_test.go` | done |
 | §2.2 | Man Parser (whatis, raw, OPTIONS regex, pool 4–8 у UpdateIndex) | `internal/manparser`, `internal/index` | `manparser_test.go`, `index_test.go` (ParseMany) | done |
 | §2.3 | Incremental «Оновити індекс» + reparse man при зміні версії | `internal/index` (`ParseOnUpdate`) | `index_test.go` | done |
@@ -18,8 +18,8 @@
 | §4.3 P3-11 / §4.4 | + Script → draft + Script Builder UI (reorder, editor blanks round-trip, export, save) | `internal/scriptbuilder`, `frontend/src/ui/builder.js` | `scriptbuilder_test.go`, `api_test.go` | done |
 | §3 / P4-7 | `custom_scripts` CRUD | `internal/db/scripts.go`, `SaveCustomScript` | `db_test.go`, `api_test.go` | done |
 | §5 | JSON backup snippets/scripts (`version: 1`) | `internal/backup`, toolbar Export/Import | `backup_test.go`, `api_test.go` | done |
-| §5 | NFR cold start / search / RSS | `docs/NFR_NOTES.md` | бенч/нотатки | partial (виміри задокументовані; GUI RSS — host-dependent) |
-| D1–D8 | Рішення старту | `docs/DECISIONS.md`, `internal/app` | `api_test.go` | done |
+| §5 | NFR cold start / search / RSS | `docs/NFR_NOTES.md`, `scripts/ubuntu-dist-smoke.sh` | Ubuntu ELF: cold ≈107 ms to RSS≥80 MiB; idle ≈216 MiB (**D9**); FTS@3k pending | partial (FTS@3k) |
+| D1–D12 | Рішення старту + v0.1 (NFR/M11/DB path/dist smoke) | `docs/DECISIONS.md`, `internal/app` | `api_test.go` (код); docs для D9–D12 | done |
 
 Посилання на цей файл обов’язкове в MR після змін модулів.
 
