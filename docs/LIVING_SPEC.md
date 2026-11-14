@@ -19,7 +19,7 @@
 | §3 / P4-7 | `custom_scripts` CRUD | `internal/db/scripts.go`, `SaveCustomScript` | `db_test.go`, `api_test.go` | done |
 | §5 | JSON backup snippets/scripts (`version: 1`) | `internal/backup`, toolbar Export/Import | `backup_test.go`, `api_test.go` | done |
 | §5 | NFR cold start / search / RSS | `docs/NFR_NOTES.md`, `internal/db/fts_bench_test.go`, `scripts/ubuntu-dist-smoke.sh` | FTS@3000 **done** (≤50 ms); Ubuntu ELF cold ≈107 ms / idle ≈216 MiB (**D9**) | partial (cold/RSS notes) |
-| D1–D12 | Рішення старту + v0.1 (NFR/M11/DB path/dist smoke) | `docs/DECISIONS.md`, `internal/app` | `api_test.go` (код); docs для D9–D12 | done |
+| D1–D12 | Рішення старту + v0.1; M11 packages≠commands (SS-29) | `docs/DECISIONS.md`, `internal/db` (`packages`), `internal/app` | `db_test.go`, `api_test.go`; schema v2 | done |
 
 Посилання на цей файл обов’язкове в MR після змін модулів.
 
@@ -31,8 +31,8 @@
 | `EnsureIndexed` | first-run scan якщо БД порожня |
 | `UpdateIndex` | інкрементальне оновлення + подія `index:progress` |
 | `CancelIndex` / `IndexBusy` | скасування довгого UpdateIndex / SyncRepoCatalog (M3) |
-| `SyncRepoCatalog` | каталог репо → `programs` (режим «Всі», D5) |
-| `ListPrograms(ListQuery)` | режим / літера / FTS → список навігатора (без N+1) |
+| `SyncRepoCatalog` | каталог репо → `packages` (режим «Пакети», D5 / SS-29) |
+| `ListPrograms(ListQuery)` | installed → `programs`; all → `packages` (+ FTS); без N+1 |
 | `Search` / `SearchPrograms` | FTS5 |
 | `GetProgram(name, parseMan)` | деталі + lazy man + `parseWarning` + snippets + install-команда |
 | `GetRawMan(name)` | сирий man (лише встановлені, D6) |

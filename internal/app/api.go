@@ -30,7 +30,7 @@ type Info struct {
 	License  string `json:"license"`
 }
 
-// ProgramDTO is a JSON-friendly program row for the frontend.
+// ProgramDTO is a JSON-friendly navigator row (command or package — SS-29 / D10).
 type ProgramDTO struct {
 	ID          int64  `json:"id"`
 	Name        string `json:"name"`
@@ -39,6 +39,8 @@ type ProgramDTO struct {
 	Version     string `json:"version"`
 	IsInstalled bool   `json:"isInstalled"`
 	ManParsed   bool   `json:"manParsed"`
+	// Kind is "command" (PATH / programs) or "package" (repo catalog).
+	Kind string `json:"kind"`
 }
 
 // ManCommandDTO is a JSON-friendly man flag row.
@@ -327,7 +329,8 @@ func (a *API) SyncRepoCatalog() (index.CatalogSyncResult, error) {
 	return res, err
 }
 
-// GetProgram returns program detail; optionally parses man on demand (P1-14 / P2-14).
+// GetProgram returns command or package detail; optionally parses man on demand (P1-14 / P2-14).
+// Uninstalled repo packages (SS-29) resolve from the packages table with install hints (D6).
 func (a *API) GetProgram(name string, parseMan bool) (*ProgramDetail, error) {
 	if err := a.ensure(); err != nil {
 		return nil, err
@@ -335,7 +338,7 @@ func (a *API) GetProgram(name string, parseMan bool) (*ProgramDetail, error) {
 	p, err := a.store.GetProgramByName(name)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("program %q not found", name)
+			return a.getPackageDetail(name)
 		}
 		return nil, err
 	}
@@ -410,18 +413,51 @@ func (a *API) ListInstalled() ([]ProgramDTO, error) {
 }
 
 // ListPrograms returns navigator rows for mode/letter/query (P2-4…P2-6, P2-8).
+// Mode "installed" lists PATH commands (programs); mode "all" lists repo packages (SS-29).
 func (a *API) ListPrograms(q ListQuery) ([]ProgramDTO, error) {
 	if err := a.ensure(); err != nil {
 		return nil, err
 	}
-	filter := toFilter(q)
+	mode := strings.ToLower(strings.TrimSpace(q.Mode))
+	if mode == "" {
+		mode = "installed"
+	}
 	query := strings.TrimSpace(q.Query)
+	letter := strings.TrimSpace(q.Letter)
+	if letter == "" {
+		letter = "all"
+	}
+
+	if mode == "all" {
+		pf := db.PackageFilter{Letter: letter, Limit: q.Limit}
+		if query != "" {
+			hits, err := a.store.SearchPackagesFiltered(query, pf)
+			if err != nil {
+				return nil, err
+			}
+			out := make([]ProgramDTO, 0, len(hits))
+			for i := range hits {
+				out = append(out, packageToDTO(&hits[i]))
+			}
+			return out, nil
+		}
+		list, err := a.store.ListPackagesFiltered(pf)
+		if err != nil {
+			return nil, err
+		}
+		out := make([]ProgramDTO, 0, len(list))
+		for i := range list {
+			out = append(out, packageToDTO(&list[i]))
+		}
+		return out, nil
+	}
+
+	filter := toFilter(q)
 	if query != "" {
 		hits, err := a.store.SearchFiltered(query, filter)
 		if err != nil {
 			return nil, err
 		}
-		// M4: SearchHit already carries program columns — no per-hit GetProgramByID.
 		out := make([]ProgramDTO, 0, len(hits))
 		for _, h := range hits {
 			out = append(out, hitToDTO(h))
@@ -519,6 +555,7 @@ func toDTO(p *db.Program) ProgramDTO {
 		Version:     p.Version,
 		IsInstalled: p.IsInstalled,
 		ManParsed:   p.ManParsed,
+		Kind:        "command",
 	}
 }
 
@@ -531,5 +568,41 @@ func hitToDTO(h db.SearchHit) ProgramDTO {
 		Version:     h.Version,
 		IsInstalled: h.IsInstalled,
 		ManParsed:   h.ManParsed,
+		Kind:        "command",
 	}
+}
+
+func packageToDTO(p *db.Package) ProgramDTO {
+	return ProgramDTO{
+		ID:          p.ID,
+		Name:        p.Name,
+		PackageName: p.Name,
+		Summary:     p.Summary,
+		Version:     p.Version,
+		IsInstalled: p.IsInstalled,
+		ManParsed:   false,
+		Kind:        "package",
+	}
+}
+
+func (a *API) getPackageDetail(name string) (*ProgramDetail, error) {
+	pkg, err := a.store.GetPackageByName(name)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("program %q not found", name)
+		}
+		return nil, err
+	}
+	dto := ProgramDetail{
+		Program:  packageToDTO(pkg),
+		Commands: nil,
+		Snippets: []SnippetDTO{},
+	}
+	pm, _ := scanner.DetectPM()
+	dto.PackageManager = string(pm)
+	if !pkg.IsInstalled {
+		dto.InstallCommand = scanner.InstallCommand(pm, pkg.Name)
+		dto.CacheHint = scanner.CacheHint(pm)
+	}
+	return &dto, nil
 }

@@ -93,12 +93,15 @@ func TestListProgramsFilters(t *testing.T) {
 	for _, p := range []db.Program{
 		{Name: "ffmpeg", Summary: "video", IsInstalled: true},
 		{Name: "curl", Summary: "http", IsInstalled: true},
-		{Name: "figlet", Summary: "banners", IsInstalled: false},
 		{Name: "7z", Summary: "archive", IsInstalled: true},
 	} {
 		if _, err := store.UpsertProgram(p, false); err != nil {
 			t.Fatal(err)
 		}
+	}
+	// SS-29: mode «all» reads packages — catalog-only figlet lives there.
+	if _, err := store.UpsertCatalogProgram("figlet", "figlet", "banners"); err != nil {
+		t.Fatal(err)
 	}
 
 	api := NewWithStore(store)
@@ -113,8 +116,13 @@ func TestListProgramsFilters(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(letterF) != 2 { // ffmpeg, figlet
+	if len(letterF) != 2 { // ffmpeg (mirrored), figlet (catalog)
 		t.Fatalf("letter f: %+v", letterF)
+	}
+	for _, row := range letterF {
+		if row.Kind != "package" {
+			t.Fatalf("mode all must be packages: %+v", row)
+		}
 	}
 	digits, err := api.ListPrograms(ListQuery{Mode: "installed", Letter: "0-9"})
 	if err != nil {
@@ -151,9 +159,12 @@ func TestUpsertCatalogDoesNotDemoteInstalled(t *testing.T) {
 	if _, err := store.UpsertCatalogProgram("htop", "htop", "process viewer"); err != nil {
 		t.Fatal(err)
 	}
-	h, err := store.GetProgramByName("htop")
+	h, err := store.GetPackageByName("htop")
 	if err != nil || h.IsInstalled || h.Summary != "process viewer" {
-		t.Fatalf("%+v err=%v", h, err)
+		t.Fatalf("catalog package: %+v err=%v", h, err)
+	}
+	if _, err := store.GetProgramByName("htop"); err == nil {
+		t.Fatal("catalog-only package must not create a PATH program row")
 	}
 }
 

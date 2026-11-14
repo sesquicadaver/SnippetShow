@@ -6,7 +6,7 @@
 
 | ID | Тема | Нотатка |
 |----|------|---------|
-| FIX-M11-split | Розділення моделі package ≠ command | **D10** — імплементація після tooling |
+| *(черга порожня)* | — | наступне — backlog / post-v0.1 |
 
 Порядок Autopilot: зверху вниз у таблиці OPEN.
 
@@ -35,7 +35,8 @@
 | ID | Тема | Нотатка |
 |----|------|---------|
 | DEC-D9 | NFR-01 accepted-deviation для v0.1 | не блокує реліз-тег |
-| DEC-D10 | M11 = розділення моделі | OPEN → FIX-M11-split |
+| DEC-D10 | M11 = розділення моделі | **done** → FIX-M11-split |
+| FIX-M11-split | `packages` ≠ `programs` (команди) | schema v2; mode all → packages; SS-29 |
 | DEC-D11 | POST-01 не до публічного релізу | D1 шлях стабільний |
 | DEC-D12 | Dist smoke Ubuntu-first | Arch/Fedora deferred / best-effort |
 | FIX-M9-Ubuntu | Dist smoke Ubuntu + checked `build/dist-notes-ubuntu.md` | `scripts/ubuntu-dist-smoke.sh`; NFR факти 2026-11-14 |

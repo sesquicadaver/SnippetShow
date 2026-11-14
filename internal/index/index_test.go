@@ -457,9 +457,9 @@ func TestSyncRepoCatalogBatchAndCacheEmpty(t *testing.T) {
 	if ftsDelta != int64(n) {
 		t.Fatalf("FTS syncs=%d want %d", ftsDelta, n)
 	}
-	hits, err := store.Search(names[0])
+	hits, err := store.SearchPackagesFiltered(names[0], db.PackageFilter{})
 	if err != nil || len(hits) == 0 {
-		t.Fatalf("fts missing first: %v err=%v", hits, err)
+		t.Fatalf("packages fts missing first: %v err=%v", hits, err)
 	}
 	keep, err := store.GetProgramByName("keepme")
 	if err != nil || !keep.IsInstalled {

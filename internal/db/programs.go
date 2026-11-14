@@ -33,6 +33,16 @@ func (s *Store) UpsertProgram(p Program, resetManParsed bool) (int64, error) {
 	if err := s.syncFTS(id); err != nil {
 		return id, err
 	}
+	// SS-29: mirror installed PATH commands into packages so mode «all» can mark them.
+	if p.IsInstalled {
+		pkg := strings.TrimSpace(p.PackageName)
+		if pkg == "" {
+			pkg = p.Name
+		}
+		if _, err := s.UpsertCatalogProgram(p.Name, pkg, p.Summary); err != nil {
+			return id, err
+		}
+	}
 	return id, nil
 }
 
@@ -144,120 +154,6 @@ FROM programs`
 		out = append(out, *p)
 	}
 	return out, rows.Err()
-}
-
-// UpsertCatalogProgram inserts a repo-catalog package without demoting installed rows.
-// Existing installed programs keep is_installed=1; summary is filled only when empty.
-// Single-row path syncs FTS immediately; mass sync should use UpsertCatalogProgramsBatch (H4).
-func (s *Store) UpsertCatalogProgram(name, packageName, summary string) (int64, error) {
-	id, _, changed, err := s.applyCatalogEntry(s.db, name, packageName, summary)
-	if err != nil {
-		return id, err
-	}
-	if changed {
-		if err := s.syncFTS(id); err != nil {
-			return id, err
-		}
-	}
-	return id, nil
-}
-
-// UpsertCatalogProgramsBatch upserts many catalog packages in transactional chunks.
-// FTS runs once per touched id after each chunk commit — not interleaved with every
-// mid-chunk row write — so SyncRepoCatalog no longer does N full syncFTS-on-upsert (H4).
-// onChunk(done, total) is optional progress (done = packages processed so far).
-func (s *Store) UpsertCatalogProgramsBatch(entries []CatalogEntry, chunkSize int, onChunk func(done, total int)) (added int, err error) {
-	if chunkSize <= 0 {
-		chunkSize = DefaultCatalogChunkSize
-	}
-	total := len(entries)
-	for i := 0; i < total; i += chunkSize {
-		end := i + chunkSize
-		if end > total {
-			end = total
-		}
-		tx, err := s.db.Begin()
-		if err != nil {
-			return added, err
-		}
-		var touched []int64
-		s.catalogBatchWriting.Store(true)
-		for _, e := range entries[i:end] {
-			id, isNew, changed, err := s.applyCatalogEntry(tx, e.Name, e.PackageName, e.Summary)
-			if err != nil {
-				s.catalogBatchWriting.Store(false)
-				_ = tx.Rollback()
-				return added, err
-			}
-			if isNew {
-				added++
-			}
-			if changed {
-				touched = append(touched, id)
-			}
-		}
-		if err := tx.Commit(); err != nil {
-			s.catalogBatchWriting.Store(false)
-			return added, err
-		}
-		s.catalogBatchWriting.Store(false)
-		for _, id := range touched {
-			if err := s.syncFTS(id); err != nil {
-				return added, err
-			}
-		}
-		if onChunk != nil {
-			onChunk(end, total)
-		}
-	}
-	return added, nil
-}
-
-// applyCatalogEntry upserts one catalog package without FTS.
-// isNew is true when the name did not exist; changed is true when FTS must refresh.
-func (s *Store) applyCatalogEntry(ex sqlExec, name, packageName, summary string) (id int64, isNew bool, changed bool, err error) {
-	name = strings.TrimSpace(name)
-	if name == "" {
-		return 0, false, false, fmt.Errorf("db: empty catalog program name")
-	}
-	existing, err := getProgramByNameExec(ex, name)
-	if err == nil {
-		if existing.Summary == "" && strings.TrimSpace(summary) != "" {
-			id, err = s.upsertProgramExec(ex, Program{
-				Name:        existing.Name,
-				PackageName: firstNonEmpty(existing.PackageName, packageName),
-				Summary:     summary,
-				Version:     existing.Version,
-				IsInstalled: existing.IsInstalled,
-				ManParsed:   existing.ManParsed,
-			}, false)
-			return id, false, true, err
-		}
-		return existing.ID, false, false, nil
-	}
-	if err != sql.ErrNoRows {
-		return 0, false, false, err
-	}
-	pkg := packageName
-	if pkg == "" {
-		pkg = name
-	}
-	id, err = s.upsertProgramExec(ex, Program{
-		Name:        name,
-		PackageName: pkg,
-		Summary:     summary,
-		IsInstalled: false,
-	}, false)
-	return id, true, true, err
-}
-
-func firstNonEmpty(vals ...string) string {
-	for _, v := range vals {
-		if strings.TrimSpace(v) != "" {
-			return strings.TrimSpace(v)
-		}
-	}
-	return ""
 }
 
 // MarkNotInstalledExcept sets is_installed=0 for names not in keepNames.
