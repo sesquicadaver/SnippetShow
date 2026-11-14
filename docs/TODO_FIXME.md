@@ -71,7 +71,7 @@
 | UI-03 | Run потребує встановленого терміналу з D7 | діалог/toast при ErrNotFound |
 | UI-04 | Bash highlight у Builder — мінімальний (shebang/comments/strings/keywords) | без важкої editor-lib (NFR RAM) |
 | DIST-01 | openSUSE — best-effort через rpm/dnf-подібні шляхи; не цільовий smoke | задокументовано в dist-notes |
-| NFR-01 | Idle RSS webview часто > 80 МБ на сучасних webkit2gtk | виміри в `docs/NFR_NOTES.md`; Vanilla UI без важких deps |
+| NFR-01 | Idle RSS webview часто > 80 МБ на сучасних webkit2gtk | **D9 accepted-deviation v0.1** — не блокує реліз-тег; idle ≈216 МіБ на Ubuntu smoke 2026-11-14; `docs/NFR_NOTES.md`; POST-06 wontfix-for-v0.1 |
 
 ## Відкриті дефекти середовища
 
