@@ -18,7 +18,7 @@
 | §4.3 P3-11 / §4.4 | + Script → draft + Script Builder UI (reorder, editor blanks round-trip, export, save) | `internal/scriptbuilder`, `frontend/src/ui/builder.js` | `scriptbuilder_test.go`, `api_test.go` | done |
 | §3 / P4-7 | `custom_scripts` CRUD | `internal/db/scripts.go`, `SaveCustomScript` | `db_test.go`, `api_test.go` | done |
 | §5 | JSON backup snippets/scripts (`version: 1`) | `internal/backup`, toolbar Export/Import | `backup_test.go`, `api_test.go` | done |
-| §5 | NFR cold start / search / RSS | `docs/NFR_NOTES.md` | бенч/нотатки | partial (виміри задокументовані; GUI RSS — host-dependent) |
+| §5 | NFR cold start / search / RSS | `docs/NFR_NOTES.md`, `internal/db/fts_bench_test.go` | `TestFTSLatencyAt3000` (≤50 ms @3000 — **done**); cold/RSS — host-dependent / D9 | partial (search done; cold/RSS notes) |
 | D1–D8 | Рішення старту | `docs/DECISIONS.md`, `internal/app` | `api_test.go` | done |
 
 Посилання на цей файл обов’язкове в MR після змін модулів.
