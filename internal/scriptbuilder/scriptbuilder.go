@@ -24,11 +24,13 @@ func NewDraft() *Draft {
 
 // Add appends a non-empty command line (P3-11 / P4-1).
 // Empty lines are ignored — Wiki «+ Script» is a command append, not a freeform editor.
+// `[` / `test` are rewritten to /usr/bin/* so bash builtins do not shadow man binaries (SS-25).
 func (d *Draft) Add(line string) {
 	line = strings.TrimSpace(line)
 	if line == "" || d == nil {
 		return
 	}
+	line = ResolveBuiltinShadows(line)
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.Lines = append(d.Lines, line)

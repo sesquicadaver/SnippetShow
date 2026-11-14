@@ -6,7 +6,6 @@
 
 | ID | Тема | Нотатка |
 |----|------|---------|
-| FIX-SS-25 | Run `[ --help`: bash builtin потребує `]` | shell-safe argv (`/usr/bin/[`) |
 | FIX-SS-26 | Brace-опції man (`7z -ao{a\|s\|t\|u}`) | expand / annotate у manparser |
 | FIX-L4 | `staticcheck` обов’язковий у CI (fail якщо відсутній) | quality gate |
 | FIX-M11-split | Розділення моделі package ≠ command | **D10** — імплементація після tooling |
@@ -48,6 +47,7 @@
 | FIX-M10 | Vite 6.4.6; `npm audit` 0 vulns (було high на 5.4.x) | SS-22; `frontend/package.json` + lock |
 | FIX-SS-23 | Navigator scroll: список зникав через stale closure | `host._navState` + `navigator_test.mjs` |
 | FIX-SS-27 | UI lag на вибір програми (~2 с) | без `reloadList` у select; parse лише якщо !manParsed |
+| FIX-SS-25 | Run `[ --help`: bash builtin → `/usr/bin/[` | `ResolveBuiltinShadows` + Wiki `shellSafeProgram` |
 
 ## Backlog (після v0.1 / відкладено)
 

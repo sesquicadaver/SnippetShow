@@ -148,6 +148,8 @@ func (a *API) RunScript(req RunRequest) (RunResponse, error) {
 		body = strings.TrimSpace(a.draft.Generate())
 	}
 	body = scriptbuilder.EnsureShebang(body)
+	// SS-25: rewrite `[` / `test` lines so bash does not treat them as builtins.
+	body = scriptbuilder.ResolveBuiltinShadowsBody(body)
 	r := safety.Analyze(body)
 	if r.Dangerous && !req.Confirmed {
 		return RunResponse{NeedsConfirm: true, Reasons: r.Reasons}, nil
