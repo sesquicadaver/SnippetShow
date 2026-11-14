@@ -11,6 +11,7 @@ _(порожньо для цього патчу — див. також черг�
 | ID | Тема | Нотатка |
 |----|------|---------|
 | FIX-SS-20 | Run argv: зайва кома з man-синтаксису | `NormalizeFlagList`; Wiki `commandFromFlag` |
+| FIX-SS-21 | Run з редактора BASH (втрачені правки / usage-only) | keep-focus на actions; sync SetScriptBody перед Run |
 
 ## DONE (hotfix)
 

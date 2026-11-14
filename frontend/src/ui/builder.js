@@ -44,6 +44,7 @@ export function renderBuilder(host, state) {
         </div>
         <div class="builder-editor-wrap">
           <h3>${esc(uk.builderEditor)}</h3>
+          <p class="muted builder-editor-hint">${esc(uk.builderEditorHint || uk.builderHint)}</p>
           <div class="bash-editor">
             <pre class="bash-highlight" aria-hidden="true">${highlightBash(body)}</pre>
             <textarea class="bash-input" spellcheck="false" autocomplete="off">${esc(body)}</textarea>
@@ -92,8 +93,22 @@ function bindBuilderEvents(host, state) {
     }
   });
   // Body is source of truth on blur: backend ApplyBody keeps blank lines (H3).
-  ta?.addEventListener('blur', () => {
+  // Skip commit when focus moves to builder actions — mousedown preventDefault keeps
+  // focus in the textarea so Run/Export read the latest body (SS-21).
+  ta?.addEventListener('blur', (e) => {
+    const next = e.relatedTarget;
+    if (next && host.querySelector('.builder-actions')?.contains(next)) {
+      return;
+    }
     state.onEditorCommit?.(ta.value);
+  });
+
+  // Keep textarea focus when pressing action buttons so blur→repaint cannot
+  // destroy the button before click or drop in-progress editor edits (SS-21).
+  host.querySelector('.builder-actions')?.addEventListener('mousedown', (e) => {
+    if (e.button === 0 && e.target.closest('button[data-action]')) {
+      e.preventDefault();
+    }
   });
 
   host.querySelectorAll('[data-action="line-up"]').forEach((btn) => {
@@ -106,17 +121,19 @@ function bindBuilderEvents(host, state) {
     btn.addEventListener('click', () => state.onRemove?.(Number(btn.dataset.index)));
   });
 
+  const readBody = () => (ta ? ta.value : '');
+
   host.querySelector('[data-action="script-copy"]')?.addEventListener('click', () => {
-    state.onCopy?.(ta?.value || '');
+    state.onCopy?.(readBody());
   });
   host.querySelector('[data-action="script-run"]')?.addEventListener('click', () => {
-    state.onRun?.(ta?.value || '');
+    state.onRun?.(readBody());
   });
   host.querySelector('[data-action="script-export"]')?.addEventListener('click', () => {
-    state.onExport?.(ta?.value || '');
+    state.onExport?.(readBody());
   });
   host.querySelector('[data-action="script-save"]')?.addEventListener('click', () => {
-    state.onSave?.(ta?.value || '');
+    state.onSave?.(readBody());
   });
   host.querySelector('[data-action="script-clear"]')?.addEventListener('click', () => state.onClear?.());
 

@@ -15,7 +15,7 @@
 | §4.3 / P2–P3 | Center Wiki man + Raw Man + install hint + checkbox↔draft + CRUD | `frontend/src/ui/wiki.js`, `GetProgram`, snippets API | `api_test.go`, `db_test.go` | done |
 | §4.3 | Clipboard X11/Wayland (+ Wails) | `internal/clipboard`, `App.CopyText` | `clipboard_test.go` | done |
 | §4.3 / §5 | Terminal Run + safety confirm (command-word + path/`env` wrappers) | `internal/terminal`, `internal/safety`, `App.RunCommand` | `terminal_test.go`, `safety_test.go`, `api_test.go` | done |
-| §4.3 P3-11 / §4.4 | + Script → draft + Script Builder UI (reorder, editor blanks round-trip, export, save) | `internal/scriptbuilder`, `frontend/src/ui/builder.js` | `scriptbuilder_test.go`, `api_test.go` | done |
+| §4.3 P3-11 / §4.4 | + Script → draft + Script Builder UI (reorder, editor blanks round-trip, export, save); Run з редактора без втрати правок (SS-21) | `internal/scriptbuilder`, `frontend/src/ui/{builder,shell}.js` | `scriptbuilder_test.go`, `api_test.go`; UI keep-focus + SetScriptBody before Run | done |
 | §3 / P4-7 | `custom_scripts` CRUD | `internal/db/scripts.go`, `SaveCustomScript` | `db_test.go`, `api_test.go` | done |
 | §5 | JSON backup snippets/scripts (`version: 1`) | `internal/backup`, toolbar Export/Import | `backup_test.go`, `api_test.go` | done |
 | §5 | NFR cold start / search / RSS | `docs/NFR_NOTES.md` | бенч/нотатки | partial (виміри задокументовані; GUI RSS — host-dependent) |
