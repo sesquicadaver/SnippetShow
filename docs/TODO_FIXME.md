@@ -63,6 +63,7 @@
 | SS-26 | Brace-опції man (`-ao{a\|s\|t\|u}`) без розшифровки | **done** — `ExpandBraceAlternatives` + Wiki `expandBraceOptions` |
 | SS-28 | `staticcheck` optional / skipped у CI | **done** — обов’язковий install+run у Actions і `ci-local` (FIX-L4) |
 | SS-29 | Пакет ≠ команда в режимі «Всі» (M11 / D10) | **done** — таблиця `packages` + mode all; PATH лишається в `programs` |
+| SS-30 | Паузи/втрата фокусу в пошуку; повільний ввід у BASH editor | **done** — incremental toolbar/builder; soft list reload; rAF highlight; `ui_input_lag_test.mjs` |
 
 ## Відомі обмеження Core / Wiki / Builder
 

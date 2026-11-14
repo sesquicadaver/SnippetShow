@@ -3,7 +3,20 @@ import uk from '../i18n/uk.js';
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 /**
- * Builds the Wiki toolbar: mode radios, search, alphabet, update controls.
+ * SS-30: do not overwrite the live search field while the user is typing.
+ * @param {boolean} inputFocused
+ * @param {string} currentValue
+ * @param {string} nextQuery
+ * @returns {boolean}
+ */
+export function shouldSyncSearchValue(inputFocused, currentValue, nextQuery) {
+  if (inputFocused) return false;
+  return String(currentValue ?? '') !== String(nextQuery ?? '');
+}
+
+/**
+ * Builds / updates the Wiki toolbar: mode radios, search, alphabet, update controls.
+ * First call mounts DOM; later calls patch in place so the search input keeps focus (SS-30).
  * @param {HTMLElement} host
  * @param {{
  *   mode: string,
@@ -23,11 +36,18 @@ const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
  * }} state
  */
 export function renderToolbar(host, state) {
-  const progress = state.progress;
-  const pct = progress && progress.total > 0
-    ? Math.min(100, Math.round((100 * progress.done) / progress.total))
-    : state.busy ? 15 : 0;
+  host._toolbarState = state;
 
+  if (!host.dataset.ready) {
+    mountToolbar(host);
+    host.dataset.ready = '1';
+    bindToolbarEvents(host);
+  }
+
+  patchToolbar(host, state);
+}
+
+function mountToolbar(host) {
   host.innerHTML = `
     <div class="toolbar" role="toolbar" aria-label="Керування Wiki">
       <div class="toolbar-brand">
@@ -35,65 +55,129 @@ export function renderToolbar(host, state) {
         <span class="toolbar-brand-sub">${esc(uk.subtitle)}</span>
       </div>
       <div class="toolbar-modes" role="radiogroup" aria-label="Режим списку">
-        <label class="mode ${state.mode === 'installed' ? 'is-active' : ''}">
-          <input type="radio" name="mode" value="installed" ${state.mode === 'installed' ? 'checked' : ''}/>
+        <label class="mode" data-mode="installed">
+          <input type="radio" name="mode" value="installed"/>
           ${esc(uk.modeInstalled)}
         </label>
-        <label class="mode ${state.mode === 'all' ? 'is-active' : ''}">
-          <input type="radio" name="mode" value="all" ${state.mode === 'all' ? 'checked' : ''}/>
+        <label class="mode" data-mode="all">
+          <input type="radio" name="mode" value="all"/>
           ${esc(uk.modeAll)}
         </label>
       </div>
       <div class="toolbar-search">
         <input type="search" class="search-input" placeholder="${esc(uk.searchPlaceholder)}"
-          value="${esc(state.query)}" autocomplete="off" spellcheck="false"/>
+          value="" autocomplete="off" spellcheck="false"/>
       </div>
       <div class="toolbar-actions">
-        <button type="button" class="btn btn-primary" data-action="update" ${state.busy ? 'disabled' : ''}>
-          ${esc(state.busy ? uk.updating : uk.updateIndex)}
-        </button>
-        ${state.busy ? `
-        <button type="button" class="btn btn-danger" data-action="cancel" title="${esc(uk.cancelIndex)}">
-          ${esc(uk.cancelIndex)}
-        </button>` : ''}
-        <button type="button" class="btn" data-action="catalog" ${state.busy ? 'disabled' : ''} title="${esc(uk.modeAll)}">
+        <button type="button" class="btn btn-primary" data-action="update"></button>
+        <button type="button" class="btn btn-danger" data-action="cancel" hidden
+          title="${esc(uk.cancelIndex)}">${esc(uk.cancelIndex)}</button>
+        <button type="button" class="btn" data-action="catalog" title="${esc(uk.modeAll)}">
           ${esc(uk.syncCatalog)}
         </button>
-        <button type="button" class="btn" data-action="export-backup" ${state.busy ? 'disabled' : ''} title="${esc(uk.exportBackup)}">
+        <button type="button" class="btn" data-action="export-backup" title="${esc(uk.exportBackup)}">
           ${esc(uk.exportBackup)}
         </button>
-        <button type="button" class="btn" data-action="import-backup" ${state.busy ? 'disabled' : ''} title="${esc(uk.importBackup)}">
+        <button type="button" class="btn" data-action="import-backup" title="${esc(uk.importBackup)}">
           ${esc(uk.importBackup)}
         </button>
       </div>
       <div class="toolbar-status" aria-live="polite">
-        <div class="progress-track" ${state.busy ? '' : 'hidden'}>
-          <div class="progress-bar" style="width:${pct}%"></div>
+        <div class="progress-track" hidden>
+          <div class="progress-bar" style="width:0%"></div>
         </div>
-        <span class="status-text">${esc(state.status || uk.statusIdle)}</span>
+        <span class="status-text"></span>
       </div>
       <div class="alphabet" role="group" aria-label="Алфавітний фільтр">
-        <button type="button" class="alpha ${state.letter === 'all' ? 'is-active' : ''}" data-letter="all">${esc(uk.alphabetAll)}</button>
+        <button type="button" class="alpha" data-letter="all">${esc(uk.alphabetAll)}</button>
         ${LETTERS.map((L) => `
-          <button type="button" class="alpha ${state.letter.toUpperCase() === L ? 'is-active' : ''}" data-letter="${L}">${L}</button>
+          <button type="button" class="alpha" data-letter="${L}">${L}</button>
         `).join('')}
-        <button type="button" class="alpha ${state.letter === '0-9' ? 'is-active' : ''}" data-letter="0-9">${esc(uk.alphabetDigits)}</button>
+        <button type="button" class="alpha" data-letter="0-9">${esc(uk.alphabetDigits)}</button>
       </div>
     </div>
   `;
+}
 
+function bindToolbarEvents(host) {
   host.querySelectorAll('input[name="mode"]').forEach((el) => {
-    el.addEventListener('change', () => state.onMode(el.value));
+    el.addEventListener('change', () => host._toolbarState?.onMode?.(el.value));
   });
   const search = host.querySelector('.search-input');
-  search.addEventListener('input', () => state.onQuery(search.value));
-  host.querySelector('[data-action="update"]').addEventListener('click', () => state.onUpdate());
-  host.querySelector('[data-action="cancel"]')?.addEventListener('click', () => state.onCancel?.());
-  host.querySelector('[data-action="catalog"]').addEventListener('click', () => state.onSyncCatalog());
-  host.querySelector('[data-action="export-backup"]')?.addEventListener('click', () => state.onExportBackup?.());
-  host.querySelector('[data-action="import-backup"]')?.addEventListener('click', () => state.onImportBackup?.());
+  search.addEventListener('input', () => host._toolbarState?.onQuery?.(search.value));
+  host.querySelector('[data-action="update"]').addEventListener('click', () => {
+    host._toolbarState?.onUpdate?.();
+  });
+  host.querySelector('[data-action="cancel"]').addEventListener('click', () => {
+    host._toolbarState?.onCancel?.();
+  });
+  host.querySelector('[data-action="catalog"]').addEventListener('click', () => {
+    host._toolbarState?.onSyncCatalog?.();
+  });
+  host.querySelector('[data-action="export-backup"]').addEventListener('click', () => {
+    host._toolbarState?.onExportBackup?.();
+  });
+  host.querySelector('[data-action="import-backup"]').addEventListener('click', () => {
+    host._toolbarState?.onImportBackup?.();
+  });
   host.querySelectorAll('[data-letter]').forEach((btn) => {
-    btn.addEventListener('click', () => state.onLetter(btn.getAttribute('data-letter')));
+    btn.addEventListener('click', () => {
+      host._toolbarState?.onLetter?.(btn.getAttribute('data-letter'));
+    });
+  });
+}
+
+function patchToolbar(host, state) {
+  const progress = state.progress;
+  const pct = progress && progress.total > 0
+    ? Math.min(100, Math.round((100 * progress.done) / progress.total))
+    : state.busy ? 15 : 0;
+
+  host.querySelectorAll('[data-mode]').forEach((label) => {
+    const mode = label.getAttribute('data-mode');
+    const active = state.mode === mode;
+    label.classList.toggle('is-active', active);
+    const input = label.querySelector('input');
+    if (input) input.checked = active;
+  });
+
+  const search = host.querySelector('.search-input');
+  if (search && shouldSyncSearchValue(
+    document.activeElement === search,
+    search.value,
+    state.query,
+  )) {
+    search.value = state.query || '';
+  }
+
+  const updateBtn = host.querySelector('[data-action="update"]');
+  if (updateBtn) {
+    updateBtn.disabled = !!state.busy;
+    updateBtn.textContent = state.busy ? uk.updating : uk.updateIndex;
+  }
+
+  const cancelBtn = host.querySelector('[data-action="cancel"]');
+  if (cancelBtn) cancelBtn.hidden = !state.busy;
+
+  host.querySelectorAll('[data-action="catalog"], [data-action="export-backup"], [data-action="import-backup"]')
+    .forEach((btn) => {
+      btn.disabled = !!state.busy;
+    });
+
+  const track = host.querySelector('.progress-track');
+  const bar = host.querySelector('.progress-bar');
+  if (track) track.hidden = !state.busy;
+  if (bar) bar.style.width = `${pct}%`;
+
+  const status = host.querySelector('.status-text');
+  if (status) status.textContent = state.status || uk.statusIdle;
+
+  host.querySelectorAll('[data-letter]').forEach((btn) => {
+    const letter = btn.getAttribute('data-letter');
+    const active = letter === 'all' || letter === '0-9'
+      ? state.letter === letter
+      : state.letter.toUpperCase() === letter;
+    btn.classList.toggle('is-active', active);
   });
 }
 

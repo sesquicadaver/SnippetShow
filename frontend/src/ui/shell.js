@@ -5,6 +5,19 @@ import { renderNavigator } from './navigator.js';
 import { renderWiki } from './wiki.js';
 import { renderBuilder } from './builder.js';
 
+/** SS-30: debounce FTS while typing; keep above one frame of keystroke burst. */
+export const SEARCH_DEBOUNCE_MS = 280;
+
+/**
+ * SS-30: blank the navigator only when there is nothing useful to keep on screen.
+ * Soft-refresh keeps the previous list visible during search refetch.
+ * @param {number} programCount
+ * @returns {boolean}
+ */
+export function shouldShowListLoading(programCount) {
+  return !(programCount > 0);
+}
+
 /**
  * Phase 4 Wiki shell: toolbar + navigator + center + Script Builder + backup.
  * @param {HTMLElement} root
@@ -127,10 +140,11 @@ class WikiApp {
         this.reloadList();
       },
       onQuery: (query) => {
+        // SS-30: never remount toolbar on keystrokes — search input already shows
+        // the typed value; paintToolbar would destroy focus.
         this.query = query;
         clearTimeout(this._searchTimer);
-        this._searchTimer = setTimeout(() => this.reloadList(), 180);
-        this.paintToolbar();
+        this._searchTimer = setTimeout(() => this.reloadList(), SEARCH_DEBOUNCE_MS);
       },
       onUpdate: () => this.runUpdate(),
       onCancel: () => this.cancelIndex(),
@@ -242,8 +256,9 @@ class WikiApp {
   async reloadList() {
     if (!hasWails()) return;
     const req = ++this._reqList;
-    this.listLoading = true;
-    this.paintNavigator();
+    // SS-30: soft-refresh — keep previous rows visible while FTS runs.
+    this.listLoading = shouldShowListLoading(this.programs?.length || 0);
+    if (this.listLoading) this.paintNavigator();
     try {
       const rows = await AppAPI.ListPrograms(this.listQuery());
       if (req !== this._reqList) return;
