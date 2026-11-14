@@ -27,11 +27,10 @@ func seedFTSScaleFixture(t testing.TB, n int) *Store {
 	}
 	t.Cleanup(func() { _ = s.Close() })
 
-	entries := make([]CatalogEntry, 0, n)
+	// Seed PATH-style programs (not packages): FTS@3k gate covers programs_fts + man/snippets.
 	for i := 0; i < n; i++ {
 		name := fmt.Sprintf("pkg%04d", i)
 		summary := fmt.Sprintf("utility package number %d for scale search", i)
-		// Sprinkle distinctive tokens so MATCH hits are non-trivial but sparse.
 		switch {
 		case i == 42:
 			name = ftsBenchNeedle
@@ -41,12 +40,11 @@ func seedFTSScaleFixture(t testing.TB, n int) *Store {
 		case i%137 == 0:
 			summary += " archive compression tool"
 		}
-		entries = append(entries, CatalogEntry{
-			Name: name, PackageName: name, Summary: summary,
-		})
-	}
-	if _, err := s.UpsertCatalogProgramsBatch(entries, DefaultCatalogChunkSize, nil); err != nil {
-		t.Fatalf("seed catalog: %v", err)
+		if _, err := s.UpsertProgram(Program{
+			Name: name, PackageName: name, Summary: summary, IsInstalled: true,
+		}, false); err != nil {
+			t.Fatalf("seed program %q: %v", name, err)
+		}
 	}
 
 	// Enrich the needle with man flags + snippet so FTS covers all columns.

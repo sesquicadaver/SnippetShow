@@ -16,7 +16,8 @@ import (
 const DefaultPath = "~/.local/share/linux-cmd-wiki/wiki.db"
 
 // SchemaVersion is the current migration revision applied by Open.
-const SchemaVersion = 1
+// v2 (SS-29 / D10): separate packages (repo catalog) from programs (PATH commands).
+const SchemaVersion = 2
 
 // Store holds an open SQLite connection with schema ready for use.
 type Store struct {
@@ -110,6 +111,9 @@ CREATE TABLE IF NOT EXISTS schema_meta (
 		if err := s.applyV1(); err != nil {
 			return err
 		}
+		if err := s.applyV2(); err != nil {
+			return err
+		}
 		if _, err := s.db.Exec(
 			`INSERT INTO schema_meta(key, value) VALUES('schema_version', ?)`,
 			fmt.Sprintf("%d", SchemaVersion),
@@ -121,16 +125,27 @@ CREATE TABLE IF NOT EXISTS schema_meta (
 	if err != nil {
 		return fmt.Errorf("db: read schema_version: %w", err)
 	}
-	if ver < SchemaVersion {
+	if ver < 1 {
 		if err := s.applyV1(); err != nil {
 			return err
 		}
-		if _, err := s.db.Exec(
-			`UPDATE schema_meta SET value = ? WHERE key = 'schema_version'`,
-			fmt.Sprintf("%d", SchemaVersion),
-		); err != nil {
-			return fmt.Errorf("db: bump schema_version: %w", err)
+		ver = 1
+	}
+	if ver < 2 {
+		if err := s.applyV2(); err != nil {
+			return err
 		}
+		ver = 2
+	}
+	if ver != SchemaVersion {
+		return fmt.Errorf("db: unsupported schema_version %d (want %d)", ver, SchemaVersion)
+	}
+	if _, err := s.db.Exec(
+		`INSERT INTO schema_meta(key, value) VALUES('schema_version', ?)
+ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+		fmt.Sprintf("%d", SchemaVersion),
+	); err != nil {
+		return fmt.Errorf("db: set schema_version: %w", err)
 	}
 	return nil
 }
@@ -184,6 +199,110 @@ func (s *Store) applyV1() error {
 		}
 	}
 	return nil
+}
+
+// applyV2 introduces packages (+ FTS) and moves catalog-only rows out of programs (SS-29 / D10).
+func (s *Store) applyV2() error {
+	stmts := []string{
+		`CREATE TABLE IF NOT EXISTS packages (
+  id      INTEGER PRIMARY KEY,
+  name    TEXT NOT NULL UNIQUE,
+  summary TEXT,
+  version TEXT
+)`,
+		`CREATE VIRTUAL TABLE IF NOT EXISTS packages_fts USING fts5(
+  name,
+  summary,
+  content='',
+  tokenize = 'unicode61'
+)`,
+	}
+	for _, stmt := range stmts {
+		if _, err := s.db.Exec(stmt); err != nil {
+			return fmt.Errorf("db: migrate v2: %w\nstmt: %s", err, stmt)
+		}
+	}
+	return s.migrateCatalogRowsToPackages()
+}
+
+// migrateCatalogRowsToPackages copies uninstalled catalog stubs into packages and
+// removes them from programs when they have no snippets (PATH commands stay put).
+func (s *Store) migrateCatalogRowsToPackages() error {
+	rows, err := s.db.Query(`
+SELECT p.id, p.name, COALESCE(p.summary,''), COALESCE(p.version,'')
+FROM programs p
+WHERE p.is_installed = 0
+  AND NOT EXISTS (SELECT 1 FROM user_snippets s WHERE s.program_id = p.id)`)
+	if err != nil {
+		return fmt.Errorf("db: v2 select catalog stubs: %w", err)
+	}
+	defer rows.Close()
+	type stub struct {
+		id      int64
+		name    string
+		summary string
+		version string
+	}
+	var stubs []stub
+	for rows.Next() {
+		var st stub
+		if err := rows.Scan(&st.id, &st.name, &st.summary, &st.version); err != nil {
+			return err
+		}
+		stubs = append(stubs, st)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, st := range stubs {
+		if _, err := s.db.Exec(
+			`INSERT INTO packages(name, summary, version) VALUES(?, ?, ?)
+ON CONFLICT(name) DO UPDATE SET
+  summary = CASE
+    WHEN excluded.summary IS NOT NULL AND excluded.summary != '' THEN excluded.summary
+    ELSE packages.summary
+  END,
+  version = CASE
+    WHEN excluded.version IS NOT NULL AND excluded.version != '' THEN excluded.version
+    ELSE packages.version
+  END`,
+			st.name, nullStr(st.summary), nullStr(st.version),
+		); err != nil {
+			return fmt.Errorf("db: v2 insert package %q: %w", st.name, err)
+		}
+		var pkgID int64
+		if err := s.db.QueryRow(`SELECT id FROM packages WHERE name = ?`, st.name).Scan(&pkgID); err != nil {
+			return err
+		}
+		if err := s.syncPackageFTS(pkgID); err != nil {
+			return err
+		}
+		if _, err := s.db.Exec(`DELETE FROM programs WHERE id = ?`, st.id); err != nil {
+			return fmt.Errorf("db: v2 delete stub program %d: %w", st.id, err)
+		}
+	}
+	// Mirror installed command names into packages so mode «all» can mark them installed.
+	if _, err := s.db.Exec(`
+INSERT INTO packages(name, summary, version)
+SELECT name, summary, version FROM programs WHERE is_installed = 1
+ON CONFLICT(name) DO NOTHING`); err != nil {
+		return fmt.Errorf("db: v2 mirror installed: %w", err)
+	}
+	rows2, err := s.db.Query(`SELECT id FROM packages`)
+	if err != nil {
+		return err
+	}
+	defer rows2.Close()
+	for rows2.Next() {
+		var id int64
+		if err := rows2.Scan(&id); err != nil {
+			return err
+		}
+		if err := s.syncPackageFTS(id); err != nil {
+			return err
+		}
+	}
+	return rows2.Err()
 }
 
 // HasTable reports whether a user table exists (used by schema tests).

@@ -234,7 +234,7 @@ func (u *Updater) EnsureIndexed(ctx context.Context) (UpdateResult, error) {
 	return u.FirstRun(ctx)
 }
 
-// CatalogSyncResult summarises a repo-catalog sync into programs (Phase 2 / D5).
+// CatalogSyncResult summarises a repo-catalog sync into packages (Phase 2 / D5 / SS-29).
 type CatalogSyncResult struct {
 	Added  int                 `json:"added"`
 	Status scanner.CacheStatus `json:"status"`
@@ -242,8 +242,8 @@ type CatalogSyncResult struct {
 	Total  int                 `json:"total"`
 }
 
-// SyncRepoCatalog upserts distribution packages as programs without demoting installed rows.
-// Writes go through transactional batch upsert with deferred FTS (H4).
+// SyncRepoCatalog upserts distribution packages into the packages table (SS-29 / D10).
+// PATH commands in programs are unchanged; mode «all» reads packages.
 func (u *Updater) SyncRepoCatalog(ctx context.Context, progress chan<- Progress) (CatalogSyncResult, error) {
 	if u.Store == nil {
 		return CatalogSyncResult{}, fmt.Errorf("index: nil store")

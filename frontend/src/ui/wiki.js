@@ -26,22 +26,28 @@ export function renderWiki(host, state) {
   }
 
   const p = detail.program;
-  if (!p.isInstalled) {
+  // SS-29: repo packages (and uninstalled stubs) use the install panel, not man flags.
+  if (!p.isInstalled || p.kind === 'package') {
+    const title = p.kind === 'package' ? (uk.packageTitle || uk.installTitle) : uk.installTitle;
     host.innerHTML = `
       <section class="wiki-panel">
         <header class="wiki-header">
           <h2>${esc(p.name)}</h2>
-          <p class="wiki-sub">${esc(uk.installTitle)}</p>
+          <p class="wiki-sub">${esc(title)}</p>
         </header>
         <div class="install-block">
           <h3>${esc(uk.installSummary)}</h3>
           <p>${esc(p.summary || '—')}</p>
+          ${p.isInstalled ? `
+          <p class="muted">${esc(uk.packageInstalledHint || uk.statusInstalled)}</p>
+          ` : `
           <h3>${esc(uk.installCommand)}</h3>
           <pre class="install-cmd">${esc(detail.installCommand || '—')}</pre>
           <div class="row-actions">
             ${actionButtons(detail.installCommand || '', 'install')}
           </div>
           <p class="muted">${esc(detail.cacheHint || uk.installHint)}</p>
+          `}
         </div>
         ${renderSnippetsBlock(detail, state)}
         ${state.confirm ? renderConfirm(state.confirm) : ''}

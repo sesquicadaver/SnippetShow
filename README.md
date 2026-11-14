@@ -101,7 +101,7 @@ Toolbar: **Експорт JSON** / **Імпорт JSON** — лише `user_snip
 
 ## Статус
 
-**MVP фази 0–4** — feature-complete на `main`. Рішення v0.1 (D9–D12): NFR-01 прийнято; M11 = розділення моделі; шлях БД без міграції до публічного релізу; **Ubuntu dist smoke checked**. Черга: `docs/ROADMAP_FIXES.md`.
+**MVP фази 0–4** — feature-complete на `main`. Рішення v0.1 (D9–D12): NFR-01 прийнято; **M11 packages≠commands** (schema v2); шлях БД без міграції до публічного релізу; **Ubuntu dist smoke checked**. Черга: `docs/ROADMAP_FIXES.md`.
 
 ## Wiki + Builder (фази 2–4)
 

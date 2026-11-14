@@ -97,6 +97,15 @@ export function renderNavigator(host, state) {
   paintWindow(host);
 }
 
+function statusLabel(p) {
+  if (p.kind === 'package') {
+    return p.isInstalled
+      ? `${uk.statusKindPackage || 'Пакет'} · ${uk.statusInstalled}`
+      : `${uk.statusKindPackage || 'Пакет'} · ${uk.statusNotInstalled}`;
+  }
+  return p.isInstalled ? uk.statusInstalled : uk.statusNotInstalled;
+}
+
 function paintWindow(host) {
   const st = resolveNavState(host);
   if (!st) return;
@@ -121,7 +130,7 @@ function paintWindow(host) {
         data-name="${esc(p.name)}" style="height:${ROW_H}px">
         <span class="nav-name" title="${esc(p.name)}">${esc(p.name)}</span>
         <span class="nav-summary" title="${esc(p.summary || '')}">${esc(p.summary || '—')}</span>
-        <span class="nav-status">${esc(installed ? uk.statusInstalled : uk.statusNotInstalled)}</span>
+        <span class="nav-status">${esc(statusLabel(p))}</span>
       </button>
     `);
   }

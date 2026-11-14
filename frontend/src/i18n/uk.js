@@ -7,8 +7,12 @@ export const uk = {
   phaseHint: 'Конструктор скриптів, JSON backup, збірка ELF.',
 
   modeInstalled: 'Встановлені',
-  modeAll: 'Всі програми',
+  modeAll: 'Пакети',
   searchPlaceholder: 'Пошук програм, прапорців, ключових слів…',
+  packageTitle: 'Пакет репозиторію',
+  packageInstalledHint: 'Пакет пов’язаний із встановленою командою. Для man оберіть її в режимі «Встановлені».',
+  statusKindCommand: 'Команда',
+  statusKindPackage: 'Пакет',
   alphabetAll: 'Всі',
   alphabetDigits: '0–9',
   updateIndex: 'Оновити індекс',
@@ -35,7 +39,8 @@ export const uk = {
   statusNotInstalled: 'Не встановлено',
   emptyList: 'Немає програм за цим фільтром.',
   emptyInstalledHint: 'Натисніть «Оновити індекс», щоб просканувати систему.',
-  emptyAllHint: 'Підвантажте каталог репозиторію або оновіть кеш пакетів.',
+  emptyAllHint: 'Підвантажте каталог репозиторію («Підвантажити каталог») або оновіть кеш пакетів.',
+  countPackages: '{n} пакетів',
 
   wikiTitle: 'Офіційні команди (man)',
   wikiFilterPlaceholder: 'Фільтр прапорців…',
