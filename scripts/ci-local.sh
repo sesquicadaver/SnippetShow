@@ -25,9 +25,9 @@ else
   else
     echo "==> staticcheck skipped (not installed)"
   fi
-  if command -v node >/dev/null 2>&1 && [[ -f frontend/src/ui/navigator_test.mjs ]]; then
-    echo "==> frontend navigator unit tests (SS-23)"
-    node --test frontend/src/ui/navigator_test.mjs
+  if command -v node >/dev/null 2>&1; then
+    echo "==> frontend unit tests (navigator/shell)"
+    node --test frontend/src/ui/*_test.mjs
   fi
   echo "ci-local: OK (internal only)"
   exit 0
@@ -38,9 +38,9 @@ if [[ -f frontend/package.json ]] && command -v npm >/dev/null 2>&1; then
   (cd frontend && npm ci --ignore-scripts >/dev/null && npm run build && touch dist/.gitkeep)
 fi
 
-if command -v node >/dev/null 2>&1 && [[ -f frontend/src/ui/navigator_test.mjs ]]; then
-  echo "==> frontend navigator unit tests (SS-23)"
-  node --test frontend/src/ui/navigator_test.mjs
+if command -v node >/dev/null 2>&1; then
+  echo "==> frontend unit tests (navigator/shell)"
+  node --test frontend/src/ui/*_test.mjs
 fi
 
 echo "==> go vet ${GO_TAGS[*]:-} ./..."

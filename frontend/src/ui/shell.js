@@ -268,23 +268,29 @@ class WikiApp {
     this.snippetForm = { open: false, id: 0, title: '', command: '', tags: '', error: '' };
     this.confirm = null;
     this.detailLoading = true;
+    // Selection paint only — never toggle listLoading / reloadList here (SS-27).
     this.paintNavigator();
     this.paintWiki();
     const req = ++this._reqDetail;
+    const row = (this.programs || []).find((p) => p.name === name);
     try {
-      const detail = await AppAPI.GetProgram(name, true);
-      if (req !== this._reqDetail) return;
-      this.detail = detail;
-      this.detailLoading = false;
-      if (detail?.parseWarning) {
-        const warn = fmt(uk.statusParseWarning, { msg: detail.parseWarning });
-        this.status = warn;
-        this.showToast(warn);
-      } else {
-        this.status = fmt(uk.selected, { name });
+      if (programNeedsManParse(row)) {
+        // Instant shell (metadata / empty flags), then parse in background.
+        const quick = await AppAPI.GetProgram(name, false);
+        if (req !== this._reqDetail) return;
+        this.detail = quick;
+        this.detailLoading = false;
+        this.status = uk.statusParsing;
         this.paintToolbar();
         this.paintWiki();
+        const detail = await AppAPI.GetProgram(name, true);
+        if (req !== this._reqDetail) return;
+        this.commitProgramDetail(detail, name);
+        return;
       }
+      const detail = await AppAPI.GetProgram(name, false);
+      if (req !== this._reqDetail) return;
+      this.commitProgramDetail(detail, name);
     } catch (err) {
       console.error(err);
       if (req !== this._reqDetail) return;
@@ -294,7 +300,31 @@ class WikiApp {
       this.paintToolbar();
       this.paintWiki();
     }
-    this.reloadList();
+  }
+
+  /**
+   * Apply GetProgram result to wiki state without refetching the navigator list.
+   * @param {object|null} detail
+   * @param {string} name
+   */
+  commitProgramDetail(detail, name) {
+    this.detail = detail;
+    this.detailLoading = false;
+    if (detail?.program?.manParsed) {
+      const row = (this.programs || []).find((p) => p.name === name);
+      if (row) row.manParsed = true;
+    }
+    if (detail?.parseWarning) {
+      const warn = fmt(uk.statusParseWarning, { msg: detail.parseWarning });
+      this.status = warn;
+      this.paintToolbar();
+      this.paintWiki();
+      this.showToast(warn);
+      return;
+    }
+    this.status = fmt(uk.selected, { name });
+    this.paintToolbar();
+    this.paintWiki();
   }
 
   async openRaw() {
@@ -709,6 +739,17 @@ class WikiApp {
     this.paintToolbar();
     await this.reloadList();
   }
+}
+
+/**
+ * SS-27: on-demand man parse only for installed rows that are not cached yet.
+ * Unknown row → parse (safe). Uninstalled / already parsed → skip.
+ * @param {{isInstalled?: boolean, manParsed?: boolean}|null|undefined} row
+ * @returns {boolean}
+ */
+export function programNeedsManParse(row) {
+  if (!row) return true;
+  return !!(row.isInstalled && !row.manParsed);
 }
 
 function fmt(template, vars) {
