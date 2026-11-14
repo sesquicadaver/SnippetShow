@@ -26,6 +26,9 @@ FLAGS
        --dry-run
               do not write changes
 
+       -ao{a|s|t|u}
+              set overwrite mode (brace alternatives)
+
 ENVIRONMENT
        DEMO_HOME
               configuration directory

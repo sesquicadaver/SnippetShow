@@ -114,11 +114,14 @@ func parseSection(sec string, seen map[string]struct{}) []Option {
 			curFlag, curDesc = "", ""
 			return
 		}
-		// Combined man syntax "-a, --all" becomes runnable "-a --all" (no comma glued to argv).
-		key := flag
-		if _, ok := seen[key]; !ok {
+		// SS-26: "-ao{a|s|t|u}" → separate runnable rows with variant annotations.
+		for _, opt := range ExpandBraceAlternatives(flag, desc) {
+			key := opt.Flag
+			if _, ok := seen[key]; ok {
+				continue
+			}
 			seen[key] = struct{}{}
-			out = append(out, Option{Flag: flag, Description: desc})
+			out = append(out, opt)
 		}
 		curFlag, curDesc = "", ""
 	}
