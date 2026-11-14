@@ -54,10 +54,13 @@ export function renderWiki(host, state) {
 
   const filter = (state.flagFilter || '').trim().toLowerCase();
   const draftSet = new Set((state.draftLines || []).map((l) => String(l).trim()).filter(Boolean));
-  const cmds = (detail.commands || []).filter((c) => {
-    if (!filter) return true;
-    return `${c.flag} ${c.description}`.toLowerCase().includes(filter);
-  });
+  // SS-26: expand cached "-ao{a|s|t|u}" rows for Run/Copy without waiting for reparse.
+  const cmds = (detail.commands || [])
+    .flatMap((c) => expandBraceOptions(c.flag, c.description))
+    .filter((c) => {
+      if (!filter) return true;
+      return `${c.flag} ${c.description}`.toLowerCase().includes(filter);
+    });
 
   host.innerHTML = `
     <section class="wiki-panel">
@@ -87,15 +90,16 @@ export function renderWiki(host, state) {
           <tbody>
             ${cmds.length === 0 ? `
               <tr><td colspan="4" class="muted">${esc(uk.wikiNoFlags)}</td></tr>
-            ` : cmds.map((c) => {
+            ` : cmds.map((c, idx) => {
               const line = commandFromFlag(p.name, c.flag);
               const checked = draftSet.has(line) ? 'checked' : '';
+              const key = c.id != null ? `man-${c.id}` : `man-brace-${idx}-${c.flag}`;
               return `
               <tr>
                 <td class="col-check"><input type="checkbox" data-action="check-script" data-cmd="${esc(line)}" ${checked} title="${esc(uk.actionScript)}"/></td>
                 <td class="flag"><code>${esc(c.flag)}</code></td>
                 <td>${esc(c.description)}</td>
-                <td class="actions">${actionButtons(line, `man-${c.id}`)}</td>
+                <td class="actions">${actionButtons(line, key)}</td>
               </tr>`;
             }).join('')}
           </tbody>
@@ -211,6 +215,30 @@ export function shellSafeProgram(program) {
   if (program === '[') return '/usr/bin/[';
   if (program === 'test') return '/usr/bin/test';
   return String(program || '');
+}
+
+/**
+ * Expand man brace alternatives like "-ao{a|s|t|u}" into runnable rows (SS-26).
+ * @param {string} flag
+ * @param {string} description
+ * @returns {Array<{flag:string,description:string}>}
+ */
+export function expandBraceOptions(flag, description) {
+  const raw = String(flag || '');
+  const m = raw.match(/^(.*)\{([^{}]+)\}(.*)$/);
+  if (!m || !m[2].includes('|')) {
+    return [{ flag: raw, description: String(description || '') }];
+  }
+  const [, prefix, inner, suffix] = m;
+  return inner
+    .split('|')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((alt) => {
+      const base = String(description || '').trim();
+      const ann = base ? `${base} (варіант: ${alt})` : `(варіант: ${alt})`;
+      return { flag: `${prefix}${alt}${suffix}`, description: ann };
+    });
 }
 
 /**

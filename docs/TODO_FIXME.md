@@ -60,7 +60,7 @@
 | SS-23 | Скрол списку програм → список зникає | **done** — scroll paint з `host._navState` (не closure першого render); `navigator_test.mjs` |
 | SS-27 | UI lag ~2 с на клік у списку | **done** — прибрано `reloadList` з `selectProgram`; two-phase GetProgram; `shell_select_test.mjs` |
 | SS-25 | Run `[ --help` → bash `[: missing ]'` | **done** — `shellSafeProgram` + `ResolveBuiltinShadows` → `/usr/bin/[` |
-| SS-26 | Brace-опції man (`-ao{a\|s\|t\|u}`) без розшифровки | open — manparser |
+| SS-26 | Brace-опції man (`-ao{a\|s\|t\|u}`) без розшифровки | **done** — `ExpandBraceAlternatives` + Wiki `expandBraceOptions` |
 
 ## Відомі обмеження Core / Wiki / Builder
 
