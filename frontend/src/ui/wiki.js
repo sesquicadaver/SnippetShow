@@ -201,11 +201,32 @@ export function normalizeManFlag(flag) {
     .join(' ');
 }
 
-function commandFromFlag(program, flag) {
+/**
+ * Bash builtins that shadow coreutils binaries documented in man (SS-25).
+ * `[ --help` must become `/usr/bin/[ --help`, not the `[` builtin (needs `]`).
+ * @param {string} program
+ * @returns {string}
+ */
+export function shellSafeProgram(program) {
+  if (program === '[') return '/usr/bin/[';
+  if (program === 'test') return '/usr/bin/test';
+  return String(program || '');
+}
+
+/**
+ * @param {string} program
+ * @param {string} flag
+ * @returns {string}
+ */
+export function commandFromFlag(program, flag) {
+  const prog = shellSafeProgram(program);
   const f = normalizeManFlag(flag);
-  if (!f) return program;
-  if (f.startsWith(program + ' ') || f === program) return f;
-  return `${program} ${f}`;
+  if (!f) return prog;
+  if (f === program || f.startsWith(`${program} `)) {
+    return prog + f.slice(program.length);
+  }
+  if (f === prog || f.startsWith(`${prog} `)) return f;
+  return `${prog} ${f}`;
 }
 
 function renderRawModal(state) {

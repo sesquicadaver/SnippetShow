@@ -9,6 +9,7 @@ import (
 	"snippetshow/internal/clipboard"
 	"snippetshow/internal/db"
 	"snippetshow/internal/safety"
+	"snippetshow/internal/scriptbuilder"
 	"snippetshow/internal/terminal"
 )
 
@@ -144,6 +145,8 @@ func (a *API) RunCommand(req RunRequest) (RunResponse, error) {
 	if cmd == "" {
 		return RunResponse{Error: "порожня команда"}, fmt.Errorf("порожня команда")
 	}
+	// SS-25: man pages document /usr/bin/[; bash builtin `[` needs a closing `]`.
+	cmd = scriptbuilder.ResolveBuiltinShadows(cmd)
 	r := safety.Analyze(cmd)
 	if r.Dangerous && !req.Confirmed {
 		return RunResponse{NeedsConfirm: true, Reasons: r.Reasons}, nil
