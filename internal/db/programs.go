@@ -351,10 +351,6 @@ func (s *Store) CountUserSnippets(programID int64) (int, error) {
 	return n, err
 }
 
-func (s *Store) programIDByName(name string) (int64, error) {
-	return programIDByNameExec(s.db, name)
-}
-
 func programIDByNameExec(ex sqlExec, name string) (int64, error) {
 	var id int64
 	err := ex.QueryRow(`SELECT id FROM programs WHERE name = ?`, name).Scan(&id)

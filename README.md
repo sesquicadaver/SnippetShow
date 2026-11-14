@@ -2,7 +2,7 @@
 
 **SnippetShow** — Linux Command Wiki & Script Builder: локальна легковагова десктопна утиліта для індексації CLI-програм, man-прапорців, користувацьких сніпетів і конструктора bash-скриптів.
 
-Канонічне ТЗ: [`TOR_base.md`](TOR_base.md). Рішення старту: [`docs/DECISIONS.md`](docs/DECISIONS.md) (D1–D8). Матриця ТЗ→модуль→тести: [`docs/LIVING_SPEC.md`](docs/LIVING_SPEC.md). NFR: [`docs/NFR_NOTES.md`](docs/NFR_NOTES.md).
+Канонічне ТЗ: [`TOR_base.md`](TOR_base.md). Рішення: [`docs/DECISIONS.md`](docs/DECISIONS.md) (D1–D12). Матриця ТЗ→модуль→тести: [`docs/LIVING_SPEC.md`](docs/LIVING_SPEC.md). NFR: [`docs/NFR_NOTES.md`](docs/NFR_NOTES.md) (NFR-01 / Idle RSS — accepted-deviation для v0.1, D9).
 
 ## Стек
 
@@ -63,6 +63,15 @@ wails dev
 # артефакт: build/bin/SnippetShow
 ```
 
+## Ubuntu dist smoke (v0.1 / D12)
+
+```bash
+./scripts/ubuntu-dist-smoke.sh
+# чекліст: build/dist-notes-ubuntu.md (P4-16)
+```
+
+Arch/Fedora — deferred після базової готовності (best-effort нотатки в `build/dist-notes-*.md`).
+
 ## Тести
 
 Проєкт тестується у контрольованому середовищі (локальний скрипт / CI), не «на око» на прод-машині:
@@ -90,7 +99,7 @@ Toolbar: **Експорт JSON** / **Імпорт JSON** — лише `user_snip
 
 ## Статус
 
-**Фаза 4** — Script Builder UI, CRUD `custom_scripts`, JSON backup, dist-notes Ubuntu/Arch/Fedora, NFR notes.
+**MVP фази 0–4** — feature-complete на `main`. Рішення v0.1 (D9–D12): NFR-01 прийнято; M11 = розділення моделі; шлях БД без міграції до публічного релізу; **Ubuntu dist smoke checked**. Черга: `docs/ROADMAP_FIXES.md`.
 
 ## Wiki + Builder (фази 2–4)
 
