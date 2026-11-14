@@ -6,7 +6,6 @@
 
 | ID | Тема | Нотатка |
 |----|------|---------|
-| FIX-M10 | Оновлення Vite / закриття high advisory frontend tooling | hygiene перед публічним тегом |
 | FIX-L4 | `staticcheck` обов’язковий у CI (fail якщо відсутній) | quality gate |
 | FIX-M11-split | Розділення моделі package ≠ command | **D10** — імплементація після tooling |
 
@@ -44,6 +43,7 @@
 | FIX-FTS-3k | Бенч/gate FTS @ ~3000 programs ≤ 50 ms | `TestFTSLatencyAt3000` + `BenchmarkSearchAt3000`; avg ≪ 50 ms; `ci-local.sh` |
 | FIX-SS-20 | Run argv: зайва кома з man-синтаксису | `NormalizeFlagList`; Wiki `commandFromFlag` |
 | FIX-SS-21 | Run з редактора BASH (втрачені правки / usage-only) | keep-focus на actions; sync SetScriptBody перед Run |
+| FIX-M10 | Vite 6.4.6; `npm audit` 0 vulns (було high на 5.4.x) | SS-22; `frontend/package.json` + lock |
 
 ## Backlog (після v0.1 / відкладено)
 

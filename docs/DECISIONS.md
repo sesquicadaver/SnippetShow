@@ -31,6 +31,6 @@
 
 ## Наслідки D9–D12 для черги
 
-- OPEN Autopilot: FTS@3k → tooling → M11 split (`docs/ROADMAP_FIXES.md`); Ubuntu dist smoke — **done** (FIX-M9-Ubuntu).
+- OPEN Autopilot: L4 staticcheck → M11 split (`docs/ROADMAP_FIXES.md`); FTS@3k / Ubuntu dist smoke / Vite tooling (FIX-M10) — **done**.
 - POST-01 / POST-06 не входить у шлях до публічного тегу v0.1.
 - Arch/Fedora smoke — після базової готовності (D12).
