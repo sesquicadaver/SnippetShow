@@ -17,7 +17,8 @@ const DefaultPath = "~/.local/share/linux-cmd-wiki/wiki.db"
 
 // SchemaVersion is the current migration revision applied by Open.
 // v2 (SS-29 / D10): separate packages (repo catalog) from programs (PATH commands).
-const SchemaVersion = 2
+// v3 (SS-32 / D13): favorites, raw PM category (Section), man_status.
+const SchemaVersion = 3
 
 // Store holds an open SQLite connection with schema ready for use.
 type Store struct {
@@ -114,6 +115,9 @@ CREATE TABLE IF NOT EXISTS schema_meta (
 		if err := s.applyV2(); err != nil {
 			return err
 		}
+		if err := s.applyV3(); err != nil {
+			return err
+		}
 		if _, err := s.db.Exec(
 			`INSERT INTO schema_meta(key, value) VALUES('schema_version', ?)`,
 			fmt.Sprintf("%d", SchemaVersion),
@@ -136,6 +140,12 @@ CREATE TABLE IF NOT EXISTS schema_meta (
 			return err
 		}
 		ver = 2
+	}
+	if ver < 3 {
+		if err := s.applyV3(); err != nil {
+			return err
+		}
+		ver = 3
 	}
 	if ver != SchemaVersion {
 		return fmt.Errorf("db: unsupported schema_version %d (want %d)", ver, SchemaVersion)
@@ -223,6 +233,29 @@ func (s *Store) applyV2() error {
 		}
 	}
 	return s.migrateCatalogRowsToPackages()
+}
+
+// applyV3 adds favorites / raw category / man_status (SS-32 / D13).
+func (s *Store) applyV3() error {
+	stmts := []string{
+		`ALTER TABLE programs ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0 CHECK (is_favorite IN (0, 1))`,
+		`ALTER TABLE programs ADD COLUMN category TEXT`,
+		`ALTER TABLE programs ADD COLUMN man_status TEXT NOT NULL DEFAULT 'unknown'`,
+		`CREATE INDEX IF NOT EXISTS idx_programs_favorite ON programs(is_favorite)`,
+		`CREATE INDEX IF NOT EXISTS idx_programs_category ON programs(category)`,
+		`CREATE INDEX IF NOT EXISTS idx_programs_man_status ON programs(man_status)`,
+	}
+	for _, stmt := range stmts {
+		if _, err := s.db.Exec(stmt); err != nil {
+			// Fresh DB after v1 already has no columns — ALTER is fine.
+			// Re-run / duplicate column: ignore "duplicate column name".
+			if strings.Contains(strings.ToLower(err.Error()), "duplicate column") {
+				continue
+			}
+			return fmt.Errorf("db: migrate v3: %w\nstmt: %s", err, stmt)
+		}
+	}
+	return nil
 }
 
 // migrateCatalogRowsToPackages copies uninstalled catalog stubs into packages and

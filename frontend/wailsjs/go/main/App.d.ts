@@ -39,6 +39,12 @@ export function GenerateScript():Promise<string>;
 
 export function GetProgram(arg1:string,arg2:boolean):Promise<app.ProgramDetail>;
 
+export function SetFavorite(arg1:string,arg2:boolean):Promise<app.ProgramDTO>;
+
+export function ListCategories():Promise<Array<string>>;
+
+export function EnrichMetadata():Promise<void>;
+
 export function GetRawMan(arg1:string):Promise<string>;
 
 export function ImportBackup(arg1:string):Promise<app.BackupResultDTO>;

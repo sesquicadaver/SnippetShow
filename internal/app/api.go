@@ -30,7 +30,7 @@ type Info struct {
 	License  string `json:"license"`
 }
 
-// ProgramDTO is a JSON-friendly navigator row (command or package — SS-29 / D10).
+// ProgramDTO is a JSON-friendly navigator row (command or package — SS-29 / D10 / D13).
 type ProgramDTO struct {
 	ID          int64  `json:"id"`
 	Name        string `json:"name"`
@@ -39,6 +39,9 @@ type ProgramDTO struct {
 	Version     string `json:"version"`
 	IsInstalled bool   `json:"isInstalled"`
 	ManParsed   bool   `json:"manParsed"`
+	IsFavorite  bool   `json:"isFavorite"`
+	Category    string `json:"category"`
+	ManStatus   string `json:"manStatus"`
 	// Kind is "command" (PATH / programs) or "package" (repo catalog).
 	Kind string `json:"kind"`
 }
@@ -61,6 +64,8 @@ type ProgramDetail struct {
 	CacheHint      string          `json:"cacheHint,omitempty"`
 	// ParseWarning is set when on-demand man parse failed (M2); detail still returns.
 	ParseWarning string `json:"parseWarning,omitempty"`
+	// NeedsFavorite is set when man is gated until the user favorites the command (D13.4).
+	NeedsFavorite bool `json:"needsFavorite,omitempty"`
 }
 
 // SearchResultDTO is an FTS hit for the UI.
@@ -72,12 +77,14 @@ type SearchResultDTO struct {
 	IsInstalled bool   `json:"isInstalled"`
 }
 
-// ListQuery is the Wiki navigator filter contract (P2-4…P2-6).
+// ListQuery is the Wiki navigator filter contract (P2-4…P2-6 / D13).
 type ListQuery struct {
-	Mode   string `json:"mode"`   // "installed" (default) | "all"
-	Letter string `json:"letter"` // "all" | "A"–"Z" | "0-9"
-	Query  string `json:"query"`  // FTS text; empty → list
-	Limit  int    `json:"limit"`
+	Mode     string `json:"mode"`     // "installed" (default) | "favorites" | "all"
+	Letter   string `json:"letter"`   // "all" | "A"–"Z" | "0-9"
+	Query    string `json:"query"`    // FTS text; empty → list
+	Category string `json:"category"` // raw PM Section filter; empty → all
+	NoMan    bool   `json:"noMan"`    // man_status=absent filter (D13.10)
+	Limit    int    `json:"limit"`
 }
 
 // ProgressEvent is emitted to the UI during index/catalog work (P2-7).
@@ -187,13 +194,44 @@ func (a *API) Close() error {
 }
 
 // EnsureIndexed runs a fast first-run scan when the DB has no programs.
+// After a fresh FirstRun it kicks off background metadata enrich (D13.9).
 func (a *API) EnsureIndexed() (index.UpdateResult, error) {
 	if err := a.ensure(); err != nil {
 		return index.UpdateResult{}, err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	return a.updater.EnsureIndexed(ctx)
+	before, _ := a.store.ListPrograms(false)
+	res, err := a.updater.EnsureIndexed(ctx)
+	if err != nil {
+		return res, err
+	}
+	if len(before) == 0 && res.Added > 0 {
+		go a.runEnrichBackground()
+	}
+	return res, nil
+}
+
+func (a *API) runEnrichBackground() {
+	if err := a.ensure(); err != nil {
+		return
+	}
+	ctx, err := a.beginLongOp(10 * time.Minute)
+	if err != nil {
+		return
+	}
+	defer a.endLongOp()
+	progress := make(chan index.Progress, 32)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for p := range progress {
+			a.emit(ProgressEvent{Phase: p.Phase, Done: p.Done, Total: p.Total, Message: p.Message})
+		}
+	}()
+	_ = a.updater.EnrichMetadata(ctx, progress)
+	close(progress)
+	<-done
 }
 
 // ScanInstalled runs a PATH/PM scan and upserts installed programs (P1-16).
@@ -329,7 +367,8 @@ func (a *API) SyncRepoCatalog() (index.CatalogSyncResult, error) {
 	return res, err
 }
 
-// GetProgram returns command or package detail; optionally parses man on demand (P1-14 / P2-14).
+// GetProgram returns command or package detail (P1-14 / P2-14 / D13).
+// Man is loaded only for favorites (D13.3–D13.4); parseMan is ignored unless is_favorite.
 // Uninstalled repo packages (SS-29) resolve from the packages table with install hints (D6).
 func (a *API) GetProgram(name string, parseMan bool) (*ProgramDetail, error) {
 	if err := a.ensure(); err != nil {
@@ -343,13 +382,23 @@ func (a *API) GetProgram(name string, parseMan bool) (*ProgramDetail, error) {
 		return nil, err
 	}
 	var parseWarning string
-	if parseMan && p.IsInstalled && !p.ManParsed {
+	if p.IsInstalled && !p.IsFavorite {
+		dto := ProgramDetail{
+			Program:       toDTO(p),
+			Snippets:      []SnippetDTO{},
+			NeedsFavorite: true,
+		}
+		pm, _ := scanner.DetectPM()
+		dto.PackageManager = string(pm)
+		return &dto, nil
+	}
+	if parseMan && p.IsInstalled && p.IsFavorite && !p.ManParsed && p.ManStatus != db.ManStatusAbsent {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		a.emit(ProgressEvent{Phase: "parse", Message: "Парсинг man: " + name})
 		if err := a.updater.ParseProgram(ctx, name); err != nil {
-			// M2: surface parse failure instead of silently returning an empty flag table.
 			parseWarning = err.Error()
+			_ = a.store.SetManStatus(p.ID, db.ManStatusAbsent, false)
 		} else {
 			p, err = a.store.GetProgramByName(name)
 			if err != nil {
@@ -366,6 +415,12 @@ func (a *API) GetProgram(name string, parseMan bool) (*ProgramDetail, error) {
 		return nil, err
 	}
 	dto := ProgramDetail{Program: toDTO(p), Snippets: []SnippetDTO{}, ParseWarning: parseWarning}
+	if p.IsFavorite && (p.ManStatus == db.ManStatusAbsent || (parseWarning != "" && len(cmds) == 0)) {
+		if parseWarning == "" {
+			parseWarning = "Man-сторінка відсутня або не розпарсена"
+		}
+		dto.ParseWarning = parseWarning
+	}
 	for _, c := range cmds {
 		dto.Commands = append(dto.Commands, ManCommandDTO{ID: c.ID, Flag: c.Flag, Description: c.Description})
 	}
@@ -385,7 +440,54 @@ func (a *API) GetProgram(name string, parseMan bool) (*ProgramDetail, error) {
 	return &dto, nil
 }
 
-// GetRawMan returns cleaned raw man text for an installed program (P2-13).
+// SetFavorite toggles Обрані and parses or purges man (D13.3–D13.5).
+func (a *API) SetFavorite(name string, on bool) (*ProgramDTO, error) {
+	if err := a.ensure(); err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+	p, err := a.updater.SetFavorite(ctx, name, on)
+	if err != nil {
+		return nil, err
+	}
+	dto := toDTO(p)
+	return &dto, nil
+}
+
+// ListCategories returns distinct raw PM Section values (D13.8).
+func (a *API) ListCategories() ([]string, error) {
+	if err := a.ensure(); err != nil {
+		return nil, err
+	}
+	return a.store.ListCategories()
+}
+
+// EnrichMetadata runs bulk Section / man-status enrich (D13.9); usable from UI/tests.
+func (a *API) EnrichMetadata() error {
+	if err := a.ensure(); err != nil {
+		return err
+	}
+	ctx, err := a.beginLongOp(10 * time.Minute)
+	if err != nil {
+		return err
+	}
+	defer a.endLongOp()
+	progress := make(chan index.Progress, 32)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for p := range progress {
+			a.emit(ProgressEvent{Phase: p.Phase, Done: p.Done, Total: p.Total, Message: p.Message})
+		}
+	}()
+	err = a.updater.EnrichMetadata(ctx, progress)
+	close(progress)
+	<-done
+	return err
+}
+
+// GetRawMan returns cleaned raw man text for an installed favorite (P2-13 / D13).
 func (a *API) GetRawMan(name string) (string, error) {
 	if err := a.ensure(); err != nil {
 		return "", err
@@ -396,6 +498,9 @@ func (a *API) GetRawMan(name string) (string, error) {
 	}
 	if !p.IsInstalled {
 		return "", fmt.Errorf("man недоступний для невстановленої програми %q (D6)", name)
+	}
+	if !p.IsFavorite {
+		return "", fmt.Errorf("man лише для обраних програм (D13)")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -540,8 +645,11 @@ func toFilter(q ListQuery) db.ProgramFilter {
 		letter = "all"
 	}
 	return db.ProgramFilter{
-		InstalledOnly: mode != "all",
+		InstalledOnly: mode == "installed" || mode == "favorites",
+		FavoritesOnly: mode == "favorites",
 		Letter:        letter,
+		Category:      strings.TrimSpace(q.Category),
+		NoManOnly:     q.NoMan,
 		Limit:         q.Limit,
 	}
 }
@@ -555,6 +663,9 @@ func toDTO(p *db.Program) ProgramDTO {
 		Version:     p.Version,
 		IsInstalled: p.IsInstalled,
 		ManParsed:   p.ManParsed,
+		IsFavorite:  p.IsFavorite,
+		Category:    p.Category,
+		ManStatus:   p.ManStatus,
 		Kind:        "command",
 	}
 }
@@ -568,6 +679,9 @@ func hitToDTO(h db.SearchHit) ProgramDTO {
 		Version:     h.Version,
 		IsInstalled: h.IsInstalled,
 		ManParsed:   h.ManParsed,
+		IsFavorite:  h.IsFavorite,
+		Category:    h.Category,
+		ManStatus:   h.ManStatus,
 		Kind:        "command",
 	}
 }

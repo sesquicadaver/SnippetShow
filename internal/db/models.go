@@ -1,6 +1,13 @@
 package db
 
-// Program is a row in the programs table (ТЗ §3).
+// Man status values (D13.10 / D13.11).
+const (
+	ManStatusUnknown = "unknown"
+	ManStatusAbsent  = "absent"
+	ManStatusParsed  = "parsed"
+)
+
+// Program is a row in the programs table (ТЗ §3 + D13).
 type Program struct {
 	ID          int64  `json:"id"`
 	Name        string `json:"name"`
@@ -9,6 +16,11 @@ type Program struct {
 	Version     string `json:"version"`
 	IsInstalled bool   `json:"isInstalled"`
 	ManParsed   bool   `json:"manParsed"`
+	IsFavorite  bool   `json:"isFavorite"`
+	// Category is the raw PM Section/Group (D13.8).
+	Category string `json:"category"`
+	// ManStatus is unknown | absent | parsed (D13.10).
+	ManStatus string `json:"manStatus"`
 }
 
 // ManCommand is a parsed man flag/command row.
@@ -46,5 +58,8 @@ type SearchHit struct {
 	Version     string  `json:"version"`
 	IsInstalled bool    `json:"isInstalled"`
 	ManParsed   bool    `json:"manParsed"`
+	IsFavorite  bool    `json:"isFavorite"`
+	Category    string  `json:"category"`
+	ManStatus   string  `json:"manStatus"`
 	Rank        float64 `json:"rank"`
 }

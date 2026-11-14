@@ -22,12 +22,17 @@ export function shouldSyncSearchValue(inputFocused, currentValue, nextQuery) {
  *   mode: string,
  *   letter: string,
  *   query: string,
+ *   category: string,
+ *   categories: string[],
+ *   noMan: boolean,
  *   busy: boolean,
  *   status: string,
  *   progress: {done:number,total:number}|null,
  *   onMode: (mode:string)=>void,
  *   onLetter: (letter:string)=>void,
  *   onQuery: (query:string)=>void,
+ *   onCategory: (category:string)=>void,
+ *   onNoMan: (on:boolean)=>void,
  *   onUpdate: ()=>void,
  *   onCancel: ()=>void,
  *   onSyncCatalog: ()=>void,
@@ -59,6 +64,10 @@ function mountToolbar(host) {
           <input type="radio" name="mode" value="installed"/>
           ${esc(uk.modeInstalled)}
         </label>
+        <label class="mode" data-mode="favorites">
+          <input type="radio" name="mode" value="favorites"/>
+          ${esc(uk.modeFavorites)}
+        </label>
         <label class="mode" data-mode="all">
           <input type="radio" name="mode" value="all"/>
           ${esc(uk.modeAll)}
@@ -67,6 +76,13 @@ function mountToolbar(host) {
       <div class="toolbar-search">
         <input type="search" class="search-input" placeholder="${esc(uk.searchPlaceholder)}"
           value="" autocomplete="off" spellcheck="false"/>
+      </div>
+      <div class="toolbar-filters">
+        <select class="category-select" aria-label="${esc(uk.filterCategoryAll)}"></select>
+        <label class="noman-filter">
+          <input type="checkbox" class="noman-input"/>
+          ${esc(uk.filterNoMan)}
+        </label>
       </div>
       <div class="toolbar-actions">
         <button type="button" class="btn btn-primary" data-action="update"></button>
@@ -105,6 +121,12 @@ function bindToolbarEvents(host) {
   });
   const search = host.querySelector('.search-input');
   search.addEventListener('input', () => host._toolbarState?.onQuery?.(search.value));
+  host.querySelector('.category-select')?.addEventListener('change', (e) => {
+    host._toolbarState?.onCategory?.(e.target.value);
+  });
+  host.querySelector('.noman-input')?.addEventListener('change', (e) => {
+    host._toolbarState?.onNoMan?.(!!e.target.checked);
+  });
   host.querySelector('[data-action="update"]').addEventListener('click', () => {
     host._toolbarState?.onUpdate?.();
   });
@@ -148,6 +170,22 @@ function patchToolbar(host, state) {
     state.query,
   )) {
     search.value = state.query || '';
+  }
+
+  const catSel = host.querySelector('.category-select');
+  if (catSel) {
+    const cats = state.categories || [];
+    const cur = state.category || '';
+    const opts = [`<option value="">${esc(uk.filterCategoryAll)}</option>`]
+      .concat(cats.map((c) => `<option value="${esc(c)}" ${c === cur ? 'selected' : ''}>${esc(c)}</option>`));
+    catSel.innerHTML = opts.join('');
+    catSel.value = cur;
+    catSel.hidden = state.mode === 'all';
+  }
+  const noMan = host.querySelector('.noman-input');
+  if (noMan) {
+    noMan.checked = !!state.noMan;
+    noMan.closest('.noman-filter').hidden = state.mode === 'all';
   }
 
   const updateBtn = host.querySelector('[data-action="update"]');

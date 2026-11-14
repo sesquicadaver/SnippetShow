@@ -71,9 +71,24 @@ func (a *App) SyncRepoCatalog() (index.CatalogSyncResult, error) {
 	return a.api.SyncRepoCatalog()
 }
 
-// GetProgram returns program detail; parseMan triggers on-demand man parse.
+// GetProgram returns program detail; man only for favorites (D13).
 func (a *App) GetProgram(name string, parseMan bool) (*appapi.ProgramDetail, error) {
 	return a.api.GetProgram(name, parseMan)
+}
+
+// SetFavorite toggles Обрані and parses/purges man (D13).
+func (a *App) SetFavorite(name string, on bool) (*appapi.ProgramDTO, error) {
+	return a.api.SetFavorite(name, on)
+}
+
+// ListCategories returns distinct raw PM Section values (D13.8).
+func (a *App) ListCategories() ([]string, error) {
+	return a.api.ListCategories()
+}
+
+// EnrichMetadata runs background-style Section/man enrich (D13.9).
+func (a *App) EnrichMetadata() error {
+	return a.api.EnrichMetadata()
 }
 
 // GetRawMan returns cleaned man text for an installed program.

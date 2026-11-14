@@ -44,9 +44,12 @@ func TestSearchAndGetProgramAPI(t *testing.T) {
 	t.Cleanup(func() { _ = store.Close() })
 
 	id, err := store.UpsertProgram(db.Program{
-		Name: "ffmpeg", Summary: "video transcoder", IsInstalled: true,
+		Name: "ffmpeg", Summary: "video transcoder", IsInstalled: true, IsFavorite: true,
 	}, false)
 	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.SetFavorite("ffmpeg", true); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.ReplaceManCommands(id, []db.ManCommand{
@@ -74,7 +77,7 @@ func TestSearchAndGetProgramAPI(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if detail.Program.Name != "ffmpeg" || len(detail.Commands) != 1 {
+	if detail.Program.Name != "ffmpeg" || len(detail.Commands) != 1 || detail.NeedsFavorite {
 		t.Fatalf("%+v", detail)
 	}
 	list, err := api.ListInstalled()
@@ -174,8 +177,11 @@ func TestSnippetAPIAndScriptDraft(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = store.Close() })
-	id, err := store.UpsertProgram(db.Program{Name: "ffmpeg", Summary: "video", IsInstalled: true}, false)
+	id, err := store.UpsertProgram(db.Program{Name: "ffmpeg", Summary: "video", IsInstalled: true, IsFavorite: true}, false)
 	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.SetFavorite("ffmpeg", true); err != nil {
 		t.Fatal(err)
 	}
 	api := NewWithStore(store)
@@ -360,8 +366,11 @@ func TestGetProgramSurfacesParseWarning(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = store.Close() })
 	if _, err := store.UpsertProgram(db.Program{
-		Name: "tool", Summary: "x", IsInstalled: true, ManParsed: false,
+		Name: "tool", Summary: "x", IsInstalled: true, ManParsed: false, IsFavorite: true,
 	}, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.SetFavorite("tool", true); err != nil {
 		t.Fatal(err)
 	}
 	api := NewWithStore(store)

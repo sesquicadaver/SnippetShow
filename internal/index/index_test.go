@@ -181,8 +181,9 @@ func TestFirstRunFillsProgramsWithoutMan(t *testing.T) {
 	if p.ManParsed {
 		t.Fatal("man should not be parsed on first run")
 	}
-	if !strings.Contains(p.Summary, "sample") {
-		t.Fatalf("summary=%q", p.Summary)
+	// D13.1: names-only — summary comes from later EnrichMetadata, not FirstRun.
+	if p.Summary != "" {
+		t.Fatalf("first-run summary must be empty, got %q", p.Summary)
 	}
 }
 
@@ -283,19 +284,14 @@ func TestUpdateIndexMarksGoneKeepsSnippets(t *testing.T) {
 	}
 }
 
-func TestUpdateIndexReparsesOnVersionChange(t *testing.T) {
+func TestSetFavoriteParsesAndPurgesMan(t *testing.T) {
 	store := openStore(t)
 	binDir := t.TempDir()
 	writeExec(t, binDir, "tool")
-	binPath := filepath.Join(binDir, "tool")
-	exec := &mockExec{
-		bins: map[string]string{"dpkg-query": "/usr/bin/dpkg-query"},
-		outs: dpkgOuts(binPath, "tool", "1.0", "sample tool"),
-	}
 	u := &Updater{
 		Store: store,
 		Scanner: &scanner.Scanner{
-			Runner:        exec,
+			Runner:        &mockExec{bins: map[string]string{"dpkg-query": "/usr/bin/dpkg-query"}},
 			PathEnv:       binDir,
 			Home:          t.TempDir(),
 			SkipCanonical: true,
@@ -304,64 +300,40 @@ func TestUpdateIndexReparsesOnVersionChange(t *testing.T) {
 			summary: map[string]string{"tool": "sample tool"},
 			raw:     map[string]string{"tool": sampleMan},
 		}},
-		ParseOnUpdate: true,
-		Workers:       4,
+		Workers: 4,
 	}
 	if _, err := u.FirstRun(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if err := u.ParseProgram(context.Background(), "tool"); err != nil {
-		t.Fatal(err)
-	}
 	p, err := store.GetProgramByName("tool")
-	if err != nil || !p.ManParsed || p.Version != "1.0" {
-		t.Fatalf("precondition: %+v err=%v", p, err)
+	if err != nil || p.ManParsed || p.IsFavorite {
+		t.Fatalf("first-run must be names-only: %+v err=%v", p, err)
 	}
-
-	// Bump package version → UpdateIndex must reparse, not only reset man_parsed.
-	exec.outs = dpkgOuts(binPath, "tool", "2.0", "sample tool v2")
-	prog := make(chan Progress, 64)
-	var phases []string
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		for p := range prog {
-			phases = append(phases, p.Phase)
-		}
-	}()
-	res, err := u.UpdateIndexWithProgress(context.Background(), prog)
-	close(prog)
-	<-done
+	fav, err := u.SetFavorite(context.Background(), "tool", true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Updated < 1 || res.Parsed < 1 {
-		t.Fatalf("want version update + reparse: %+v", res)
+	if !fav.IsFavorite || !fav.ManParsed {
+		t.Fatalf("favorite must parse man: %+v", fav)
 	}
-	p2, err := store.GetProgramByName("tool")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if p2.Version != "2.0" || !p2.ManParsed {
-		t.Fatalf("after update: %+v", p2)
-	}
-	cmds, err := store.ListManCommands(p2.ID)
+	cmds, err := store.ListManCommands(fav.ID)
 	if err != nil || len(cmds) == 0 {
-		t.Fatalf("man commands missing after reparse: %v err=%v", cmds, err)
+		t.Fatalf("man missing: %v err=%v", cmds, err)
 	}
-	sawParse := false
-	for _, ph := range phases {
-		if ph == "parse" {
-			sawParse = true
-			break
-		}
+	un, err := u.SetFavorite(context.Background(), "tool", false)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !sawParse {
-		t.Fatalf("missing parse progress phase: %v", phases)
+	if un.IsFavorite || un.ManParsed {
+		t.Fatalf("unfavorite must purge man: %+v", un)
+	}
+	cmds, err = store.ListManCommands(un.ID)
+	if err != nil || len(cmds) != 0 {
+		t.Fatalf("man_commands must be empty after purge: %v err=%v", cmds, err)
 	}
 }
 
-func TestUpdateIndexParsesNewInstall(t *testing.T) {
+func TestUpdateIndexDoesNotParseNewInstall(t *testing.T) {
 	store := openStore(t)
 	binDir := t.TempDir()
 	writeExec(t, binDir, "alpha")
@@ -384,16 +356,19 @@ func TestUpdateIndexParsesNewInstall(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeExec(t, binDir, "beta")
-	res, err := u.UpdateIndex(context.Background())
+	res, err := u.syncInstalled(context.Background(), false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Added < 1 || res.Parsed < 1 {
-		t.Fatalf("new install must parse: %+v", res)
+	if res.Added < 1 {
+		t.Fatalf("expected new name: %+v", res)
+	}
+	if res.Parsed != 0 {
+		t.Fatalf("D13: new install must not auto-parse: %+v", res)
 	}
 	p, err := store.GetProgramByName("beta")
-	if err != nil || !p.ManParsed {
-		t.Fatalf("beta not parsed: %+v err=%v", p, err)
+	if err != nil || p.ManParsed || p.IsFavorite {
+		t.Fatalf("beta must stay unparsed: %+v err=%v", p, err)
 	}
 }
 
@@ -502,7 +477,7 @@ func itoa(i int) string {
 	return string(b[pos:])
 }
 
-func TestUpdateIndexUsesParseManyPool(t *testing.T) {
+func TestParseManyPoolStillConcurrent(t *testing.T) {
 	store := openStore(t)
 	binDir := t.TempDir()
 	writeExec(t, binDir, "alpha")
@@ -519,16 +494,18 @@ func TestUpdateIndexUsesParseManyPool(t *testing.T) {
 			Home:          t.TempDir(),
 			SkipCanonical: true,
 		},
-		Parser:        &manparser.Parser{Runner: cm},
-		ParseOnUpdate: true,
-		Workers:       4,
+		Parser:  &manparser.Parser{Runner: cm},
+		Workers: 4,
 	}
-	res, err := u.UpdateIndex(context.Background())
+	if _, err := u.FirstRun(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := u.parseMany(context.Background(), []string{"alpha", "beta"}, func(Progress) {})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Parsed < 2 {
-		t.Fatalf("want ≥2 parsed via pool: %+v", res)
+	if parsed < 2 {
+		t.Fatalf("want ≥2 parsed via pool: %d", parsed)
 	}
 	cm.mu.Lock()
 	maxFlight := cm.maxFlight

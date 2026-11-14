@@ -40,6 +40,7 @@ export function resolveNavState(host) {
  *   mode: string,
  *   loading: boolean,
  *   onSelect: (name:string)=>void,
+ *   onFavorite?: (name:string, on:boolean)=>void,
  * }} state
  */
 export function renderNavigator(host, state) {
@@ -87,7 +88,8 @@ export function renderNavigator(host, state) {
 
   if (programs.length === 0) {
     emptyEl.hidden = false;
-    emptyEl.innerHTML = `<strong>${esc(uk.emptyList)}</strong><p>${esc(emptyHint)}</p>`;
+    const favHint = state.mode === 'favorites' ? (uk.emptyFavorites || emptyHint) : emptyHint;
+    emptyEl.innerHTML = `<strong>${esc(uk.emptyList)}</strong><p>${esc(favHint)}</p>`;
     scroll.hidden = true;
     return;
   }
@@ -103,7 +105,12 @@ function statusLabel(p) {
       ? `${uk.statusKindPackage || 'Пакет'} · ${uk.statusInstalled}`
       : `${uk.statusKindPackage || 'Пакет'} · ${uk.statusNotInstalled}`;
   }
-  return p.isInstalled ? uk.statusInstalled : uk.statusNotInstalled;
+  const bits = [];
+  if (p.isFavorite) bits.push(uk.modeFavorites || 'Обрані');
+  if (p.manStatus === 'absent') bits.push(uk.filterNoMan || 'Без man');
+  if (p.category) bits.push(p.category);
+  bits.push(p.isInstalled ? uk.statusInstalled : uk.statusNotInstalled);
+  return bits.join(' · ');
 }
 
 function paintWindow(host) {
@@ -125,18 +132,34 @@ function paintWindow(host) {
     const p = programs[i];
     const selected = st.selected === p.name;
     const installed = !!p.isInstalled;
+    const showFav = p.kind !== 'package' && installed;
     rows.push(`
-      <button type="button" class="nav-row ${selected ? 'is-selected' : ''} ${installed ? 'is-installed' : 'is-missing'}"
-        data-name="${esc(p.name)}" style="height:${ROW_H}px">
-        <span class="nav-name" title="${esc(p.name)}">${esc(p.name)}</span>
-        <span class="nav-summary" title="${esc(p.summary || '')}">${esc(p.summary || '—')}</span>
-        <span class="nav-status">${esc(statusLabel(p))}</span>
-      </button>
+      <div class="nav-row ${selected ? 'is-selected' : ''} ${installed ? 'is-installed' : 'is-missing'}"
+        style="height:${ROW_H}px">
+        ${showFav ? `
+          <button type="button" class="nav-fav ${p.isFavorite ? 'is-on' : ''}"
+            data-fav="${esc(p.name)}" title="${esc(p.isFavorite ? uk.favoriteRemove : uk.favoriteAdd)}"
+            aria-pressed="${p.isFavorite ? 'true' : 'false'}">★</button>
+        ` : `<span class="nav-fav-spacer"></span>`}
+        <button type="button" class="nav-row-main" data-name="${esc(p.name)}">
+          <span class="nav-name" title="${esc(p.name)}">${esc(p.name)}</span>
+          <span class="nav-summary" title="${esc(p.summary || '')}">${esc(p.summary || '—')}</span>
+          <span class="nav-status">${esc(statusLabel(p))}</span>
+        </button>
+      </div>
     `);
   }
   win.innerHTML = rows.join('');
   win.querySelectorAll('[data-name]').forEach((btn) => {
     btn.addEventListener('click', () => st.onSelect(btn.getAttribute('data-name')));
+  });
+  win.querySelectorAll('[data-fav]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const name = btn.getAttribute('data-fav');
+      const on = !btn.classList.contains('is-on');
+      st.onFavorite?.(name, on);
+    });
   });
 }
 

@@ -74,6 +74,18 @@ export function GetProgram(arg1, arg2) {
   return window['go']['main']['App']['GetProgram'](arg1, arg2);
 }
 
+export function SetFavorite(arg1, arg2) {
+  return window['go']['main']['App']['SetFavorite'](arg1, arg2);
+}
+
+export function ListCategories() {
+  return window['go']['main']['App']['ListCategories']();
+}
+
+export function EnrichMetadata() {
+  return window['go']['main']['App']['EnrichMetadata']();
+}
+
 export function GetRawMan(arg1) {
   return window['go']['main']['App']['GetRawMan'](arg1);
 }
