@@ -1,29 +1,34 @@
 # NFR notes (Phase 4 / ТЗ §5)
 
-Виміри виконуються у контрольованому середовищі (локальний CI-скрипт / dist smoke / dev VM), не на прод-машині користувача.
+Виміри виконуються у контрольованому середовищі (локальний CI-скрипт / dist smoke / `go test`), не на прод-машині користувача.
 
 ## Цілі ТЗ
 
 | Метрика | Ціль | Політика v0.1 |
 |---------|------|---------------|
 | Cold start | ≤ 1 s | Записати факт на ELF; host-dependent |
-| FTS search (~3000 programs) | ≤ 50 ms | Довести бенчем (цикл B) або зафіксувати відхилення |
+| FTS search (~3000 programs) | ≤ 50 ms | **done** — gate `TestFTSLatencyAt3000` |
 | Idle RAM | ≤ 60–80 MB | **D9 / NFR-01: accepted-deviation** — не блокує реліз-тег |
 
 ## Методика
 
 1. **Cold start (GUI):** час від старту процесу до RSS ≥ ~80 MiB (webview піднявся); суб’єктивно до першого кадру залежить від webkit. Оркестратор: `./scripts/ubuntu-dist-smoke.sh`.
-2. **FTS latency:** `go test ./internal/db -run TestManCommandsAndFTS -count=1` + бенч на фікстурі ~3000 (цикл B).
+2. **FTS latency @~3000:** `go test ./internal/db -run '^TestFTSLatencyAt3000$' -count=1 -v`  
+   Бенч: `go test ./internal/db -bench=BenchmarkSearchAt3000 -benchtime=2s`.  
+   Фікстура: 3000 catalog programs + man/snippet на needle `ffmpegbench` (`internal/db/fts_bench_test.go`).  
+   Поріг: avg ≤ **50 ms** (override: `FTS_LATENCY_BUDGET_MS`). Входить у `./scripts/ci-local.sh`.
 3. **Idle RSS:** через ~2 s після старту — `ps -o rss= -p $(pgrep -n SnippetShow)` (КіБ).
 
 ## Результати (агентське середовище)
 
-### Core / tooling (2026-11-13+)
+### Core / FTS (2026-11-14) — FIX-FTS-3k
 
 | Метрика | Результат | Відхилення |
 |---------|-----------|------------|
-| Core unit suite (`./scripts/ci-local.sh`) | green | — |
-| FTS unit на малих фікстурах | ≪ 50 ms | ціль виконується на unit-рівні; бенч @~3000 ще потрібен |
+| `TestFTSLatencyAt3000` | avg ≈ **94 µs**, max ≈ **116 µs** @ 3000 programs | ≪ 50 ms — **ціль виконана** |
+| `BenchmarkSearchAt3000` | ≈ **90 µs/op**, ~1.7 KiB/op | — |
+| Core unit suite (`./scripts/ci-local.sh`) | green (incl. FTS gate) | — |
+| FTS unit на малих фікстурах | ≪ 50 ms | — |
 
 ### Ubuntu ELF smoke (2026-11-14) — FIX-M9-Ubuntu / D12
 

@@ -18,7 +18,7 @@
 | §4.3 P3-11 / §4.4 | + Script → draft + Script Builder UI (reorder, editor blanks round-trip, export, save) | `internal/scriptbuilder`, `frontend/src/ui/builder.js` | `scriptbuilder_test.go`, `api_test.go` | done |
 | §3 / P4-7 | `custom_scripts` CRUD | `internal/db/scripts.go`, `SaveCustomScript` | `db_test.go`, `api_test.go` | done |
 | §5 | JSON backup snippets/scripts (`version: 1`) | `internal/backup`, toolbar Export/Import | `backup_test.go`, `api_test.go` | done |
-| §5 | NFR cold start / search / RSS | `docs/NFR_NOTES.md`, `scripts/ubuntu-dist-smoke.sh` | Ubuntu ELF: cold ≈107 ms to RSS≥80 MiB; idle ≈216 MiB (**D9**); FTS@3k pending | partial (FTS@3k) |
+| §5 | NFR cold start / search / RSS | `docs/NFR_NOTES.md`, `internal/db/fts_bench_test.go`, `scripts/ubuntu-dist-smoke.sh` | FTS@3000 **done** (≤50 ms); Ubuntu ELF cold ≈107 ms / idle ≈216 MiB (**D9**) | partial (cold/RSS notes) |
 | D1–D12 | Рішення старту + v0.1 (NFR/M11/DB path/dist smoke) | `docs/DECISIONS.md`, `internal/app` | `api_test.go` (код); docs для D9–D12 | done |
 
 Посилання на цей файл обов’язкове в MR після змін модулів.

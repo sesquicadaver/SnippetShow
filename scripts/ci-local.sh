@@ -17,6 +17,8 @@ else
   go vet ./internal/...
   echo "==> go test ./internal/..."
   go test ./internal/...
+  echo "==> FTS@3000 latency gate (TestFTSLatencyAt3000, budget ≤50ms)"
+  go test ./internal/db -run '^TestFTSLatencyAt3000$' -count=1 -v
   if command -v staticcheck >/dev/null 2>&1; then
     echo "==> staticcheck ./internal/..."
     staticcheck ./internal/...
@@ -37,6 +39,9 @@ go vet "${GO_TAGS[@]}" ./...
 
 echo "==> go test ${GO_TAGS[*]:-} ./..."
 go test "${GO_TAGS[@]}" ./...
+
+echo "==> FTS@3000 latency gate (TestFTSLatencyAt3000, budget ≤50ms)"
+go test ./internal/db -run '^TestFTSLatencyAt3000$' -count=1 -v
 
 if command -v staticcheck >/dev/null 2>&1; then
   echo "==> staticcheck ./..."

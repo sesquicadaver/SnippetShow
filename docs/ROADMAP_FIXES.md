@@ -6,10 +6,9 @@
 
 | ID | Тема | Нотатка |
 |----|------|---------|
-| FIX-FTS-3k | Бенч FTS @ ~3000 programs + baseline у NFR_NOTES / Living Spec | ТЗ §5 search |
 | FIX-M10 | Оновлення Vite / закриття high advisory frontend tooling | hygiene перед публічним тегом |
 | FIX-L4 | `staticcheck` обов’язковий у CI (fail якщо відсутній) | quality gate |
-| FIX-M11-split | Розділення моделі package ≠ command | **D10** — імплементація після B/C |
+| FIX-M11-split | Розділення моделі package ≠ command | **D10** — імплементація після tooling |
 
 Порядок Autopilot: зверху вниз у таблиці OPEN.
 
@@ -33,7 +32,7 @@
 | FIX-M4 | FTS ListPrograms без N+1 | `SearchHit` несе колонки programs |
 | FIX-L1 | Wiki uncheck → remove from draft | `RemoveFromScript` / `RemoveCommand` |
 
-## DONE (рішення / dist smoke)
+## DONE (рішення / dist smoke / NFR)
 
 | ID | Тема | Нотатка |
 |----|------|---------|
@@ -42,6 +41,7 @@
 | DEC-D11 | POST-01 не до публічного релізу | D1 шлях стабільний |
 | DEC-D12 | Dist smoke Ubuntu-first | Arch/Fedora deferred / best-effort |
 | FIX-M9-Ubuntu | Dist smoke Ubuntu + checked `build/dist-notes-ubuntu.md` | `scripts/ubuntu-dist-smoke.sh`; NFR факти 2026-11-14 |
+| FIX-FTS-3k | Бенч/gate FTS @ ~3000 programs ≤ 50 ms | `TestFTSLatencyAt3000` + `BenchmarkSearchAt3000`; avg ≪ 50 ms; `ci-local.sh` |
 
 ## Backlog (після v0.1 / відкладено)
 
@@ -56,4 +56,4 @@
 | POST-05 | GUI CI smoke з webkit | Core-тести без GUI лишаються обов’язковими; Ubuntu desktop smoke — окремо |
 | POST-06 | Idle RSS ≤ 80 МБ на webkit2gtk | **D9** — wontfix-for-v0.1; див. `docs/NFR_NOTES.md` |
 | POST-07 | Багатший bash highlight / редактор | UI-04 — без важкої lib у MVP |
-| FIX-L5 | Підтвердити GitHub Actions Checks на `main` | ops |
+| FIX-L5 | Підтвердити GitHub Actions Checks на `main` | ops (workflow зараз startup_failure репо-wide) |
