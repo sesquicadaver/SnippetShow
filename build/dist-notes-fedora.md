@@ -1,5 +1,7 @@
 # Dist notes — Fedora / RHEL-подібні
 
+**Політика v0.1 (D12):** Fedora smoke **не обов’язковий** для тегу. Статус: **deferred** — після готовності базової системи (зафіксовано 2026-11-14). Best-effort нотатки нижче лишаються валідними.
+
 ## Runtime / build deps
 
 ```bash
@@ -15,15 +17,17 @@ sudo dnf install gtk3-devel webkit2gtk4.1-devel golang npm gcc pkgconf-pkg-confi
 # артефакт: build/bin/SnippetShow
 ```
 
-## Smoke checklist (P4-18)
+## Smoke checklist (P4-18) — deferred
 
-1. [ ] Запуск ELF
-2. [ ] First-run scan (rpm/dnf metadata)
-3. [ ] Пошук відомої утиліти
-4. [ ] «Оновити індекс»
-5. [ ] Сніпет → Copy → Run (`echo ok`)
-6. [ ] Script export `.sh` + `chmod +x`
-7. [ ] JSON backup export/import
+1. [ ] Запуск ELF — *deferred (D12)*
+2. [ ] First-run scan (rpm/dnf metadata) — *deferred (D12)*
+3. [ ] Пошук відомої утиліти — *deferred (D12)*
+4. [ ] «Оновити індекс» — *deferred (D12)*
+5. [ ] Сніпет → Copy → Run (`echo ok`) — *deferred (D12)*
+6. [ ] Script export `.sh` + `chmod +x` — *deferred (D12)*
+7. [ ] JSON backup export/import — *deferred (D12)*
+
+Повторний прогін: після Ubuntu-стабілізації; трекінг `FIX-M9-Fedora` у `docs/ROADMAP_FIXES.md`.
 
 ## Каталог «Всі програми»
 
