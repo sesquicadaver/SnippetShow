@@ -352,8 +352,22 @@ class WikiApp {
 
   async runScript(body, confirmed) {
     if (!hasWails()) return;
-    const command = body || this.draft.body || '';
+    // Prefer explicit editor body (SS-21): never silently fall back to a stale
+    // draft when the caller passed an empty string after a lost click/race.
+    let command = body;
+    if (command == null || command === '') {
+      command = this.editorBody != null ? this.editorBody : (this.draft.body || '');
+    }
     try {
+      if (!confirmed) {
+        // Persist the exact editor text before launch; avoid paintBuilder here so
+        // we do not wipe the panel while the Run click is still settling.
+        const draft = await AppAPI.SetScriptBody(command);
+        if (draft) {
+          this.draft = draft;
+          this.editorBody = draft.body != null ? draft.body : command;
+        }
+      }
       const res = await AppAPI.RunScript({ command, confirmed: !!confirmed });
       if (res?.needsConfirm) {
         this.confirm = { command, reasons: res.reasons || [], kind: 'script' };
@@ -362,9 +376,11 @@ class WikiApp {
       }
       if (res?.started) {
         this.showToast(uk.toastRunStarted);
+        this.paintBuilder();
       }
     } catch (err) {
       this.showToast(`${uk.statusError}: ${err?.message || err}`);
+      this.paintBuilder();
     }
   }
 
@@ -474,8 +490,13 @@ class WikiApp {
 
   async exportScript(body) {
     if (!hasWails()) return;
+    let command = body;
+    if (command == null || command === '') {
+      command = this.editorBody != null ? this.editorBody : (this.draft.body || '');
+    }
     try {
-      const path = await AppAPI.ExportScriptDialog(body || this.draft.body || '');
+      await AppAPI.SetScriptBody(command);
+      const path = await AppAPI.ExportScriptDialog(command);
       if (path) this.showToast(fmt(uk.toastScriptExported, { path }));
     } catch (err) {
       this.showToast(`${uk.statusError}: ${err?.message || err}`);
@@ -491,10 +512,14 @@ class WikiApp {
       this.showToast(uk.builderSaveValidation);
       return;
     }
+    let command = body;
+    if (command == null || command === '') {
+      command = this.editorBody != null ? this.editorBody : (this.draft.body || '');
+    }
     try {
       const cs = await AppAPI.SaveCustomScript(this.savedScriptId || 0, {
         name: trimmed,
-        scriptBody: body || this.draft.body || '',
+        scriptBody: command,
       });
       this.savedScriptId = cs?.id || 0;
       await this.refreshSavedScripts();

@@ -56,6 +56,7 @@
 | L1 | Uncheck man → не прибирає з draft | **done** — `RemoveFromScript` |
 | M7 | Confirm gate trust-UI (DevTools `confirmed`) | **documented** — SAFE-02 / DECISIONS |
 | SS-20 | Run argv з man: кома в прапорці (`--audible,` / `-a, --all`) | **done** — `NormalizeFlagList` + `normalizeManFlag` у Wiki Run/Copy/Script |
+| SS-21 | Run з редактора BASH: blur→repaint губив правки; 2ping без host = usage/help | **done** — mousedown keep-focus + SetScriptBody перед RunScript; підказка в Builder |
 
 ## Відомі обмеження Core / Wiki / Builder
 

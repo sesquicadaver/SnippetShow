@@ -43,6 +43,7 @@
 | FIX-M9-Ubuntu | Dist smoke Ubuntu + checked `build/dist-notes-ubuntu.md` | `scripts/ubuntu-dist-smoke.sh`; NFR факти 2026-11-14 |
 | FIX-FTS-3k | Бенч/gate FTS @ ~3000 programs ≤ 50 ms | `TestFTSLatencyAt3000` + `BenchmarkSearchAt3000`; avg ≪ 50 ms; `ci-local.sh` |
 | FIX-SS-20 | Run argv: зайва кома з man-синтаксису | `NormalizeFlagList`; Wiki `commandFromFlag` |
+| FIX-SS-21 | Run з редактора BASH (втрачені правки / usage-only) | keep-focus на actions; sync SetScriptBody перед Run |
 
 ## Backlog (після v0.1 / відкладено)
 
