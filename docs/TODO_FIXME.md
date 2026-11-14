@@ -55,6 +55,7 @@
 | M4 | `ListPrograms` FTS робить N+1 `GetProgramByID` | **done** — колонки в `SearchHit` |
 | L1 | Uncheck man → не прибирає з draft | **done** — `RemoveFromScript` |
 | M7 | Confirm gate trust-UI (DevTools `confirmed`) | **documented** — SAFE-02 / DECISIONS |
+| SS-20 | Run argv з man: кома в прапорці (`--audible,` / `-a, --all`) | **done** — `NormalizeFlagList` + `normalizeManFlag` у Wiki Run/Copy/Script |
 
 ## Відомі обмеження Core / Wiki / Builder
 

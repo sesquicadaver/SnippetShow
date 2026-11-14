@@ -108,13 +108,13 @@ func parseSection(sec string, seen map[string]struct{}) []Option {
 	lines := strings.Split(sec, "\n")
 	var curFlag, curDesc string
 	flush := func() {
-		flag := strings.TrimSpace(curFlag)
+		flag := NormalizeFlagList(curFlag)
 		desc := strings.TrimSpace(curDesc)
 		if flag == "" {
 			curFlag, curDesc = "", ""
 			return
 		}
-		// Expand combined "-a, --all" into one Option with the combined flag text (UI shows syntax as in man).
+		// Combined man syntax "-a, --all" becomes runnable "-a --all" (no comma glued to argv).
 		key := flag
 		if _, ok := seen[key]; !ok {
 			seen[key] = struct{}{}
@@ -159,6 +159,43 @@ func isOptionStart(line string) bool {
 		return false // not indented
 	}
 	return strings.HasPrefix(trimmedLeft, "-")
+}
+
+// NormalizeFlagList turns man option syntax into space-separated tokens safe for
+// shell argv. Trailing commas (e.g. "--audible,") are stripped so Run does not
+// pass "--audible," as a single unrecognized argument (SS-20).
+// Only commas that separate alternative flags (", --all") are removed; commas
+// inside values that are not followed by another "-" flag are kept.
+func NormalizeFlagList(flag string) string {
+	flag = strings.TrimSpace(flag)
+	if flag == "" {
+		return ""
+	}
+	var b strings.Builder
+	b.Grow(len(flag))
+	for i := 0; i < len(flag); {
+		if flag[i] == ',' {
+			j := i + 1
+			for j < len(flag) && (flag[j] == ' ' || flag[j] == '\t') {
+				j++
+			}
+			rest := flag[j:]
+			if strings.HasPrefix(rest, "-") || strings.HasPrefix(rest, "−") {
+				b.WriteByte(' ')
+				i = j
+				continue
+			}
+		}
+		b.WriteByte(flag[i])
+		i++
+	}
+	s := strings.TrimSpace(b.String())
+	s = strings.TrimRight(s, ",，")
+	fields := strings.Fields(s)
+	for i, f := range fields {
+		fields[i] = strings.TrimRight(f, ",，")
+	}
+	return strings.Join(fields, " ")
 }
 
 func splitOptionLine(line string) (flag, rest string) {

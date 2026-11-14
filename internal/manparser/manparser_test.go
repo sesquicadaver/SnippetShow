@@ -84,7 +84,10 @@ func TestParseOptionsFromFixture(t *testing.T) {
 	}
 	foundAll := false
 	for _, o := range opts {
-		if strings.Contains(o.Flag, "-a") && strings.Contains(o.Flag, "--all") {
+		if strings.Contains(o.Flag, ",") {
+			t.Fatalf("option flag must not contain comma (SS-20): %q", o.Flag)
+		}
+		if o.Flag == "-a --all" {
 			foundAll = true
 			if !strings.Contains(o.Description, "process all") {
 				t.Fatalf("desc=%q", o.Description)
@@ -93,6 +96,22 @@ func TestParseOptionsFromFixture(t *testing.T) {
 	}
 	if !foundAll {
 		t.Fatalf("combined -a/--all missing: %+v", opts)
+	}
+}
+
+func TestNormalizeFlagList(t *testing.T) {
+	cases := map[string]string{
+		"-a, --all":           "-a --all",
+		"--audible,":          "--audible",
+		"  --quiet, --audible  ": "--quiet --audible",
+		"-f, --file FILE":     "-f --file FILE",
+		"--help":              "--help",
+		"":                    "",
+	}
+	for in, want := range cases {
+		if got := NormalizeFlagList(in); got != want {
+			t.Fatalf("NormalizeFlagList(%q)=%q want %q", in, got, want)
+		}
 	}
 }
 

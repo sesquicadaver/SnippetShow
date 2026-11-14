@@ -4,7 +4,13 @@
 
 ## OPEN
 
-_(порожньо — hotfix H2–H4 і medium M2/M3/M4/M5/L1 закриті)_
+_(порожньо для цього патчу — див. також чергу v0.1 у інших PR)_
+
+## DONE (bugfix)
+
+| ID | Тема | Нотатка |
+|----|------|---------|
+| FIX-SS-20 | Run argv: зайва кома з man-синтаксису | `NormalizeFlagList`; Wiki `commandFromFlag` |
 
 ## DONE (hotfix)
 
