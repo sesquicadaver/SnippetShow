@@ -80,6 +80,8 @@ Arch/Fedora — deferred після базової готовності (best-ef
 ./scripts/ci-local.sh
 ```
 
+`ci-local` / GitHub Actions вимагають **staticcheck** (FIX-L4 / SS-28, pin `2026.2.2`): якщо бінарника немає, скрипт ставить його через `go install` і падає, коли встановлення не вдалося.
+
 ## JSON backup (фаза 4)
 
 Toolbar: **Експорт JSON** / **Імпорт JSON** — лише `user_snippets` + `custom_scripts` (`version: 1`).
