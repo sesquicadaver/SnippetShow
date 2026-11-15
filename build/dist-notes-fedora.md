@@ -29,9 +29,9 @@ sudo dnf install gtk3-devel webkit2gtk4.1-devel golang npm gcc pkgconf-pkg-confi
 
 Повторний прогін: після Ubuntu-стабілізації; трекінг `FIX-M9-Fedora` у `docs/ROADMAP_FIXES.md`.
 
-## Каталог «Всі програми»
+## Каталог «Пакети»
 
-- Джерело: `dnf list`
+- Джерело: `dnf list` → таблиця `packages` (D10 / SS-29)
 - Порожній кеш: `sudo dnf makecache` (D5)
 
 ## openSUSE (P4-19 / best-effort)

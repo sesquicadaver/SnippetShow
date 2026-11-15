@@ -31,11 +31,11 @@ sudo pacman -S base-devel gtk3 webkit2gtk go npm
 
 Повторний прогін: після Ubuntu-стабілізації; трекінг `FIX-M9-Arch` у `docs/ROADMAP_FIXES.md`.
 
-## Каталог «Всі програми»
+## Каталог «Пакети»
 
-- Джерело: `pacman -Sl`
+- Джерело: `pacman -Sl` → таблиця `packages` (D10 / SS-29)
 - Порожній/застарілий sync: `sudo pacman -Sy` (D5)
 
 ## Відомі обмеження
 
-- AUR-пакети поза `pacman -Sl` не потрапляють у каталог «Всі».
+- AUR-пакети поза `pacman -Sl` не потрапляють у каталог «Пакети».

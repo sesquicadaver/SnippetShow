@@ -1,115 +1,104 @@
 # SnippetShow
 
-**SnippetShow** — Linux Command Wiki & Script Builder: локальна легковагова десктопна утиліта для індексації CLI-програм, man-прапорців, користувацьких сніпетів і конструктора bash-скриптів.
+**SnippetShow** — локальна Linux-only десктопна утиліта (Wails v2): інтерактивна wiki CLI-команд, man-прапорців, користувацьких сніпетів і конструктор bash-скриптів.
 
-Канонічне ТЗ: [`TOR_base.md`](TOR_base.md). Рішення: [`docs/DECISIONS.md`](docs/DECISIONS.md) (D1–D12). Матриця ТЗ→модуль→тести: [`docs/LIVING_SPEC.md`](docs/LIVING_SPEC.md). NFR: [`docs/NFR_NOTES.md`](docs/NFR_NOTES.md) (NFR-01 / Idle RSS — accepted-deviation для v0.1, D9).
+| | |
+|---|---|
+| Стек | Go ≥ 1.22 (фактично `go.mod` 1.26.0 через Wails v2.17.1) · Wails v2 · Vanilla JS (Vite) · SQLite FTS5 (`modernc.org/sqlite`) |
+| БД | `~/.local/share/linux-cmd-wiki/wiki.db` (**D1** / **D11** — без міграції шляху до публічного релізу) |
+| Платформи | Debian/Ubuntu, Arch, Fedora — **лише Linux** |
+| Ліцензія | [MIT](LICENSE) |
 
-## Стек
+Канонічні docs: [`docs/DECISIONS.md`](docs/DECISIONS.md) (D1–D13) · [`docs/LIVING_SPEC.md`](docs/LIVING_SPEC.md) · [`docs/ROADMAP_FIXES.md`](docs/ROADMAP_FIXES.md) · [`docs/TODO_FIXME.md`](docs/TODO_FIXME.md) · [`docs/NFR_NOTES.md`](docs/NFR_NOTES.md).
 
-| Шар | Технологія |
-|-----|------------|
-| Backend | Go ≥ 1.22 (Wails v2.17.1 → `go.mod` 1.26.0) |
-| GUI | Wails v2 + Vanilla JS (Vite) |
-| DB | SQLite (`modernc.org/sqlite`, FTS5) → `~/.local/share/linux-cmd-wiki/wiki.db` |
-| Ліцензія | MIT |
-| Ціль | **Linux-only** (Debian/Ubuntu, Arch, Fedora); без Windows/macOS артефактів у репо |
+## Можливості (стан `main`)
 
-## Вимоги середовища
+- Режими **Встановлені** / **Обрані** / **Пакети** + фільтр **«Без man»**; алфавіт і **Section** — custom dark toolbar-select (WebKitGTK).
+- **Names-first** індекс: швидкий список імен PATH; Section/PM metadata збагачуються у фоні (також на warm bootstrap, якщо категорії порожні).
+- **Man-gate (D13):** man парситься й зберігається лише для **Обраних**; «Обрати» / «В обраному» у навігаторі; зняття з обраного purge `man_commands`.
+- Навігатор **name-first** (Обране + Назва); lead-опис у wiki для Обраних.
+- Wiki: man-таблиця, Raw Man, install-hint для пакетів, завжди рядок **«Базова команда»**, CRUD «Мої команди», Copy / Run / + Script.
+- **Script Builder:** reorder (↑↓ / DnD), bash editor, Copy / Run / Export `.sh` (+x) / Save у БД.
+- JSON backup (`version: 1`) — лише `user_snippets` + `custom_scripts` (merge, ідемпотентний повторний імпорт).
+- Safety confirm перед Run для `rm -rf` / `dd` / `mkfs` / `sudo` (і path/`env` wrappers).
+
+<p align="center">
+  <img src="Screenshots/Scr1.png" alt="SnippetShow — список і wiki" width="90%" />
+</p>
+
+## Вимоги
 
 - Go 1.22+
-- Wails CLI v2 (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`)
-- Node.js + npm (збірка frontend)
+- Wails CLI v2: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
+- Node.js + npm
 - `gcc`, `pkg-config`, GTK3, webkit2gtk
 
-### Залежності webkit2gtk за сімействами
+### Залежності webkit2gtk
 
-**Debian / Ubuntu** — див. також [`build/dist-notes-ubuntu.md`](build/dist-notes-ubuntu.md)
+**Debian / Ubuntu** — [`build/dist-notes-ubuntu.md`](build/dist-notes-ubuntu.md)
 
 ```bash
 sudo apt update
 sudo apt install build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
-# Старіші релізи з 4.0:
-# sudo apt install libgtk-3-dev libwebkit2gtk-4.0-dev
 ```
 
-На Ubuntu 24.04+ збірка потребує tag `webkit2_41` (див. `build/build.sh`).
+Ubuntu 24.04+: збірка з tag `webkit2_41` (`./build/build.sh`).
 
-**Arch / Manjaro / EndeavourOS** — [`build/dist-notes-arch.md`](build/dist-notes-arch.md)
+**Arch** — [`build/dist-notes-arch.md`](build/dist-notes-arch.md)
 
 ```bash
 sudo pacman -S base-devel gtk3 webkit2gtk
 ```
 
-**Fedora / RHEL-подібні** — [`build/dist-notes-fedora.md`](build/dist-notes-fedora.md)
+**Fedora** — [`build/dist-notes-fedora.md`](build/dist-notes-fedora.md)
 
 ```bash
 sudo dnf install gtk3-devel webkit2gtk4.1-devel
-# або webkit2gtk3-devel / webkit2gtk4.0-devel залежно від релізу
 ```
 
-## Розробка
+## Розробка / тести
 
 ```bash
 wails doctor
 wails dev
-# або:
-./scripts/ci-local.sh
+./scripts/ci-local.sh   # unit + staticcheck (обов’язковий, pin 2026.2.2)
 ```
+
+Проєкт тестується у контрольованому середовищі (venv / CI), не «на око» на прод-машині.
 
 ## Збірка ELF
 
 ```bash
 ./build/build.sh
-# артефакт: build/bin/SnippetShow
+# → build/bin/SnippetShow
 ```
 
-Артефакти збірки **не комітяться**: `build/bin/`, `frontend/dist/` (окрім `.gitkeep`), `frontend/wailsjs/` (генерує Wails), `*.AppImage`, coverage, smoke-логи — див. `.gitignore`.
+Артефакти збірки **не в git**: `build/bin/`, `frontend/dist/` (окрім `.gitkeep`), `frontend/wailsjs/`, `*.AppImage`, coverage, smoke-логи — див. `.gitignore`. Каталоги `build/windows` / `build/darwin` навмисно відсутні.
 
-## Ubuntu dist smoke (v0.1 / D12)
+## Dist smoke (v0.1 / D12)
 
 ```bash
 ./scripts/ubuntu-dist-smoke.sh
-# чекліст: build/dist-notes-ubuntu.md (P4-16)
 ```
 
-Arch/Fedora — deferred після базової готовності (best-effort нотатки в `build/dist-notes-*.md`).
-
-## Тести
-
-Проєкт тестується у контрольованому середовищі (локальний скрипт / CI), не «на око» на прод-машині:
-
-```bash
-./scripts/ci-local.sh
-```
-
-`ci-local` / GitHub Actions вимагають **staticcheck** (FIX-L4 / SS-28, pin `2026.2.2`): якщо бінарника немає, скрипт ставить його через `go install` і падає, коли встановлення не вдалося.
-
-## JSON backup (фаза 4)
-
-Toolbar: **Експорт JSON** / **Імпорт JSON** — лише `user_snippets` + `custom_scripts` (`version: 1`).
-
-**Merge-політика імпорту:**
-
-- Сніпети: ключ `(programName, title, command)`; дублікати пропускаються.
-- Якщо програми немає — створюється stub (`is_installed=0`); `programs`/`man_commands` не затираються.
-- Скрипти: ключ `(name, scriptBody)`; дублікати пропускаються.
-- Повторний імпорт ідемпотентний для ідентичних записів.
+Ubuntu — обов’язковий чекліст (**checked**). Arch/Fedora — deferred / best-effort після базової готовності.
 
 ## Структура
 
-`internal/{app,db,scanner,manparser,index,clipboard,terminal,safety,backup,scriptbuilder}`, `frontend/` (Vanilla), `docs/`, `scripts/ci-local.sh`, `.github/workflows/ci.yml`.
+```
+internal/{app,db,scanner,manparser,index,clipboard,terminal,safety,backup,scriptbuilder}
+frontend/src/ui/{toolbar,navigator,shell,wiki,builder}.js
+docs/   scripts/ci-local.sh   .github/workflows/ci.yml   build/
+```
 
-Збірка **лише Linux** (`build/build.sh` + `build/appicon.png` + dist-notes). Каталоги `build/windows` / `build/darwin` навмисно відсутні.
+## JSON backup
+
+Toolbar **Експорт / Імпорт JSON**:
+
+- Сніпети: ключ `(programName, title, command)`; дублікати пропускаються; відсутня програма → stub (`is_installed=0`).
+- Скрипти: ключ `(name, scriptBody)`; дублікати пропускаються.
+- Повторний імпорт ідемпотентний для ідентичних записів.
 
 ## Статус
 
-**MVP фази 0–4** — feature-complete на `main`. Рішення v0.1 (D9–D12): NFR-01 прийнято; **M11 packages≠commands** (schema v2); шлях БД без міграції до публічного релізу; **Ubuntu dist smoke checked**. Черга: `docs/ROADMAP_FIXES.md`.
-
-## Wiki + Builder (фази 2–4)
-
-1. Стартовий `EnsureIndexed` сканує встановлені бінарники.
-2. Toolbar: режими, пошук, алфавіт, «Оновити індекс», каталог, Export/Import JSON.
-3. Ліворуч — список; у центрі — man / install + «Мої команди».
-4. Дії: **Копіювати**, **Запустити**, **+ Script** (і чекбокси man → draft).
-5. Праворуч **Script Builder**: reorder (↑↓ / DnD), bash editor + shebang, Copy / Run / Export `.sh` (+x) / Save у БД.
-6. Run: D7 + confirm для `rm -rf` / `dd` / `mkfs` / `sudo`.
+MVP фази 0–4 + hotfix / UI polish через **SS-52** — на `main`. Черга Autopilot порожня: [`docs/ROADMAP_FIXES.md`](docs/ROADMAP_FIXES.md). NFR Idle RSS — **D9** accepted-deviation (webkit2gtk часто > 80 МБ).
