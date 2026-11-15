@@ -64,6 +64,7 @@
 | FIX-SS-43 | Dark chrome for Section / letter selects | `color-scheme: dark`; appearance:none; match search/btn tokens |
 | FIX-SS-44 | Base-command row for Script Builder (R1) | always bare `cmd` row above man flags; empty-flags no longer blocks + Script |
 | FIX-SS-45 | Custom dark toolbar selects (WebKitGTK) | replace native Section/letter `<select>` with button+listbox |
+| FIX-SS-46 | Toolbar custom selects do not open | `.toolbar` overflow:visible (was clipping menus); pointerdown toggle |
 
 ## Backlog (після v0.1 / відкладено)
 

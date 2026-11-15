@@ -220,15 +220,14 @@ function bindToolbarEvents(host) {
   host.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeToolbarSelects(host);
   });
-  // Capture outside clicks once (SS-45 custom menus).
+  // Outside clicks once (SS-45 / SS-46). Resolve Element so text-node targets
+  // still hit .closest; ignore events that originate inside a toolbar-select.
   if (!host._toolbarOutsideBound) {
     host._toolbarOutsideBound = true;
-    document.addEventListener('mousedown', (e) => {
+    document.addEventListener('pointerdown', (e) => {
       if (!host.isConnected) return;
-      if (e.target instanceof Node && host.contains(e.target)
-        && e.target.closest?.('[data-toolbar-select]')) {
-        return;
-      }
+      const el = eventElement(e);
+      if (el && host.contains(el) && el.closest('[data-toolbar-select]')) return;
       closeToolbarSelects(host);
     });
   }
@@ -251,6 +250,36 @@ function bindToolbarEvents(host) {
 }
 
 /**
+ * Resolve the Element for a pointer/mouse event (Text nodes have no .closest).
+ * @param {Event} e
+ * @returns {Element|null}
+ */
+export function eventElement(e) {
+  const t = e?.target;
+  if (!t || typeof t !== 'object') return null;
+  if (typeof t.closest === 'function') return /** @type {Element} */ (t);
+  const parent = t.parentElement;
+  if (parent && typeof parent.closest === 'function') return parent;
+  return null;
+}
+
+/**
+ * Open or close one toolbar select (SS-45 / SS-46).
+ * @param {HTMLElement} host
+ * @param {HTMLElement} root
+ * @param {boolean} open
+ */
+export function setToolbarSelectOpen(host, root, open) {
+  closeToolbarSelects(host);
+  if (!open || !root) return;
+  const trigger = root.querySelector('.toolbar-select-trigger');
+  const menu = root.querySelector('.toolbar-select-menu');
+  root.classList.add('is-open');
+  if (trigger) trigger.setAttribute('aria-expanded', 'true');
+  if (menu) menu.hidden = false;
+}
+
+/**
  * @param {HTMLElement} host
  * @param {HTMLElement|null} root
  * @param {(value:string)=>void} onChange
@@ -261,19 +290,22 @@ function bindToolbarSelect(host, root, onChange) {
   const menu = root.querySelector('.toolbar-select-menu');
   if (!trigger || !menu) return;
 
-  trigger.addEventListener('click', (e) => {
+  // pointerdown + stopPropagation so the document outside-closer does not race
+  // the toggle (mousedown/pointerdown fires before click).
+  trigger.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
     e.stopPropagation();
-    const open = !root.classList.contains('is-open');
-    closeToolbarSelects(host);
-    if (open) {
-      root.classList.add('is-open');
-      trigger.setAttribute('aria-expanded', 'true');
-      menu.hidden = false;
-    }
+    const willOpen = !root.classList.contains('is-open');
+    setToolbarSelectOpen(host, root, willOpen);
+  });
+
+  menu.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
   });
 
   menu.addEventListener('click', (e) => {
-    const opt = e.target.closest?.('[data-value]');
+    const el = eventElement(e);
+    const opt = el?.closest?.('[data-value]');
     if (!opt || !menu.contains(opt)) return;
     const value = opt.getAttribute('data-value') || '';
     root.dataset.value = value;
@@ -307,12 +339,20 @@ function patchToolbar(host, state) {
 
   const cats = state.categories || [];
   const curCat = state.category || '';
-  patchToolbarSelect(host.querySelector('.category-select'), {
-    options: [{ value: '', label: uk.filterCategoryAll }]
-      .concat(cats.map((c) => ({ value: c, label: c }))),
-    value: curCat,
-    hidden: state.mode === 'all',
-  });
+  const categoryRoot = host.querySelector('.category-select');
+  // Avoid clobbering an open menu mid-interaction (SS-46).
+  if (!(categoryRoot?.classList.contains('is-open'))) {
+    patchToolbarSelect(categoryRoot, {
+      options: [{ value: '', label: uk.filterCategoryAll }]
+        .concat(cats.map((c) => ({ value: c, label: c }))),
+      value: curCat,
+      hidden: state.mode === 'all',
+    });
+  } else if (state.mode === 'all') {
+    // Still honor hide when switching to packages mode while open.
+    categoryRoot.hidden = true;
+    closeToolbarSelects(host);
+  }
 
   const noMan = host.querySelector('.noman-input');
   if (noMan) {
@@ -322,7 +362,6 @@ function patchToolbar(host, state) {
 
   const letterVal = normalizeLetterValue(state.letter);
   const letterRoot = host.querySelector('.letter-select');
-  // Avoid clobbering an open menu mid-interaction.
   if (!(letterRoot?.classList.contains('is-open'))) {
     patchToolbarSelect(letterRoot, {
       options: letterFilterOptions(),

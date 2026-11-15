@@ -68,7 +68,9 @@ html, body {
   border-bottom: 1px solid var(--line);
   background: rgba(20, 26, 20, 0.72);
   backdrop-filter: blur(8px);
-  overflow: hidden;
+  /* SS-46: must stay visible — custom toolbar-select menus are position:absolute
+     and would be clipped (looks like "click does nothing") under overflow:hidden. */
+  overflow: visible;
 }
 
 .toolbar-brand { grid-area: brand; }
@@ -214,7 +216,7 @@ html, body {
 
 .toolbar-filters .toolbar-select-menu {
   position: absolute;
-  z-index: 30;
+  z-index: 80;
   top: calc(100% + 2px);
   left: 0;
   right: 0;
@@ -228,6 +230,10 @@ html, body {
   background: var(--bg-elev);
   color: var(--ink);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+}
+
+.toolbar-filters .toolbar-select.is-open {
+  z-index: 90;
 }
 
 .toolbar-filters .toolbar-select-option {
