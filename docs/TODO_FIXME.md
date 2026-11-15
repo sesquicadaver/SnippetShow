@@ -1,0 +1,107 @@
+# TODO / FIXME — виявлені заглушки та дефекти
+
+Правило anti-stub: заглушки дозволені лише як тимчасові Phase-маркери з записом тут. У release path MVP їх не лишати. Канон вимог: [`DECISIONS.md`](DECISIONS.md) + [`LIVING_SPEC.md`](LIVING_SPEC.md) (`TOR_base.md` знято, SS-53).
+
+## Закрито у Phase 1
+
+| ID | Модуль | Що | Статус |
+|----|--------|----|--------|
+| STUB-01 | `internal/db` | Open/schema/FTS/CRUD | done |
+| STUB-02 | `internal/scanner` | DetectPM, ScanInstalled, catalog | done |
+| STUB-03 | `internal/manparser` | Summary, RawMan, ParseOptions, pool | done |
+| STUB-04 | `internal/index` | FirstRun / UpdateIndex / ParseProgram | done |
+
+## Закрито у Phase 2
+
+| ID | Модуль | Що | Статус |
+|----|--------|----|--------|
+| STUB-10 | `frontend/src/ui` | Read-only Wiki: toolbar / navigator / man / Raw Man | done |
+
+## Закрито у Phase 3
+
+| ID | Модуль | Що | Статус |
+|----|--------|----|--------|
+| STUB-05 | `internal/clipboard` | `Copy` (wl-copy / xclip / xsel + Wails ClipboardSetText) | done |
+| STUB-06 | `internal/terminal` | `Detect`, `Run` (D7 + argv templates) | done |
+| STUB-07 | `internal/safety` | `Analyze` (rm -rf / dd / mkfs / sudo) | done |
+| STUB-11 | `frontend` Wiki actions | Copy / Run / + Script | done |
+| STUB-12 | `frontend` «Мої команди» | CRUD сніпетів + FTS sync | done |
+
+## Закрито у Phase 4
+
+| ID | Модуль | Що | Статус |
+|----|--------|----|--------|
+| STUB-08 | `internal/backup` | `Export` / `Import` (`version: 1`, merge) | done |
+| STUB-09 | `internal/scriptbuilder` | reorder / Generate / WriteExecutable / ApplyBody | done |
+| STUB-13 | `frontend` Script Builder | права панель, editor, save/export/run, DnD | done |
+
+## Hotfix (після code review)
+
+| ID | Опис | Статус |
+|----|------|--------|
+| H2 | Safety bypass path-prefix / `env` wrappers (`/usr/bin/sudo`, `/bin/rm -rf`, …) | **done** — command-word + wrap/path у `internal/safety` |
+| H1 | `ParseOnUpdate` не вмикається → немає reparse man при зміні версії | **done** — `index.New` вмикає прапор; FirstRun без mass parse |
+| M1 | `ParseMany` pool не підключений в index | **done** — `parseMany` у UpdateIndex |
+| H3 | Script Builder стирає порожні рядки на commit | **done** — `ApplyBody` vs dense `SetLines`; L7 inner `#!` kept |
+| H4 | Catalog sync: per-package upsert + FTS → зависання | **done** — `UpsertCatalogProgramsBatch` (chunk 500, deferred FTS) |
+
+## Medium cycle (після hotfix)
+
+| ID | Опис | Статус |
+|----|------|--------|
+| M5 | `RunScript` не прибирає temp `snippetshow-script-*` | **done** — scrub on error + grace/stale |
+| M2 | `GetProgram` мовчки ігнорує помилку `ParseProgram` | **done** — `parseWarning` у відповіді + UI |
+| M3 | Немає cancel для UpdateIndex / catalog | **done** — `CancelIndex` + кнопка в toolbar |
+| M4 | `ListPrograms` FTS робить N+1 `GetProgramByID` | **done** — колонки в `SearchHit` |
+| L1 | Uncheck man → не прибирає з draft | **done** — `RemoveFromScript` |
+| M7 | Confirm gate trust-UI (DevTools `confirmed`) | **documented** — SAFE-02 / DECISIONS |
+| SS-20 | Run argv з man: кома в прапорці (`--audible,` / `-a, --all`) | **done** — `NormalizeFlagList` + `normalizeManFlag` у Wiki Run/Copy/Script |
+| SS-21 | Run з редактора BASH: blur→repaint губив правки; 2ping без host = usage/help | **done** — mousedown keep-focus + SetScriptBody перед RunScript; підказка в Builder |
+| SS-23 | Скрол списку програм → список зникає | **done** — scroll paint з `host._navState` (не closure першого render); `navigator_test.mjs` |
+| SS-27 | UI lag ~2 с на клік у списку | **done** — прибрано `reloadList` з `selectProgram`; two-phase GetProgram; `shell_select_test.mjs` |
+| SS-25 | Run `[ --help` → bash `[: missing ]'` | **done** — `shellSafeProgram` + `ResolveBuiltinShadows` → `/usr/bin/[` |
+| SS-26 | Brace-опції man (`-ao{a\|s\|t\|u}`) без розшифровки | **done** — `ExpandBraceAlternatives` + Wiki `expandBraceOptions` |
+| SS-28 | `staticcheck` optional / skipped у CI | **done** — обов’язковий install+run у Actions і `ci-local` (FIX-L4) |
+| SS-29 | Пакет ≠ команда в режимі «Всі» (M11 / D10) | **done** — таблиця `packages` + mode all; PATH лишається в `programs` |
+| SS-30 | Паузи/втрата фокусу в пошуку; повільний ввід у BASH editor | **done** — incremental toolbar/builder; soft list reload; rAF highlight; `ui_input_lag_test.mjs` |
+| SS-31 | Модель «Обрані» + man-gate (+ категорії / без man) | **done** — D13.1–D13.11 у `DECISIONS`; сирі Section; category у фоні; фільтр «Без man» |
+| SS-32 | Імплементація Обрані / man-gate / Section / «Без man» | **done** — schema v3; names-only FirstRun; SetFavorite; bulk enrich; UI режими+фільтри |
+| SS-33 | Відсутній чекбокс «Обрати» після #28 | **done** (розслідування) — був лише ★; див. store `favorites-checkbox-missing.md` |
+| SS-34 | Явний контроль «Обрати» / «В обраному» у списку | **done** — checkbox+підпис + колонка «Обране»; SetFavorite без змін |
+| SS-35 | Артефакти збірки в git | **done** — untrack `frontend/wailsjs/`, `package.json.md5`; посилено `.gitignore` |
+| SS-36a | Щільний dual-row toolbar | **done** — `grid-template-areas`; compact A–Z; thin progress; patchToolbar без змін |
+| SS-36d | Brand subtitle + alphabet strip | **done** — лише «SnippetShow»; літера = `<select>` (A–Z / 0–9) |
+| SS-36b | UpdateIndex names-first + enrich у фоні | **done** — batch upsert імен; EnrichMetadata background; soft bootstrap |
+| SS-40 | Список порожній / Loading під час індексу; toolbar sprawl | **done** — list paint before enrich; WAL reads; toolbar composition |
+| SS-41 | Навігатор: «Статус»/«Короткий опис» стискають NAME; опис дублює wiki | **done** — лише Обране+Назва; lead-опис у wiki (Favorites перед man) |
+| SS-42 | Змішаний chrome кнопок (gold Save vs dark Copy/toolbar) | **done** — один `btn-primary`; kill `btn-accent`; toolbar override не глушить primary/danger |
+| SS-43 | Section / letter `<select>` білі на темному UI | **done** — `color-scheme: dark`; `appearance: none` + `--bg-elev` / `--ink`; option tokens |
+| SS-44 | Без man-прапорців неможливо + Script | **done** — завжди рядок «Базова команда» (checkbox/Copy/Run/+ Script) над flags |
+| SS-45 | Section/letter `<select>` лишаються білими (WebKitGTK) | **done** — custom `.toolbar-select` (button+listbox); native select прибрано |
+| SS-46 | Custom toolbar selects не відкриваються | **done** — `.toolbar` overflow:visible; pointerdown toggle; skip patch while open |
+| SS-47 | Letter/Section menu click-through → programs list | **done** — `.toolbar` z-index above `.app-body`; option pointerdown + eatNextClick |
+| SS-52 | Section filter лише «Усі секції» на warm DB | **done** — bootstrap `queueEnrich` коли categories порожні (не лише `added > 0`) |
+| SS-53 | Docs refresh: зняти `TOR_base.md`, переписати README, гігієна гілок | **done** — канон: DECISIONS / LIVING_SPEC / ROADMAP / TODO / NFR |
+
+## Відомі обмеження Core / Wiki / Builder
+
+| ID | Опис | Нотатка |
+|----|------|---------|
+| CORE-01 | Man regex покриває типові OPTIONS/FLAGS; складні man — через Raw Man | ітеративно покращувати corpus |
+| SAFE-01 | Safety не парсить shell AST; обгортки поза `env/command/nice/nohup` і `$CMD` — відоме обмеження | ROADMAP backlog |
+| SAFE-02 | Confirm gate на стороні UI: `confirmed: true` з DevTools обходить діалог (Wails trust-UI) | by design для локального desktop; див. DECISIONS |
+| CORE-02 | Repo catalog apt/pacman/dnf — soft-fail при порожньому кеші (D5) | OK; UI показує hint |
+| UI-05 | ExportScriptFile/ExportBackup приймають шлях з JS (не лише dialog) | локальний trust boundary; UI використовує dialog |
+| CORE-03 | PM metadata lookup може не знайти пакет для `/usr/local` бінарників | summary з whatis / порожній package |
+| UI-01 | Повний sync apt-каталогу може бути довгим на дуже великих дзеркалах | progress + batch FTS (H4) + cancel (M3); див. `NFR_NOTES` catalog |
+| UI-02 | Copy залежить від Wails clipboard або наявності wl-copy/xclip/xsel | toast з помилкою якщо жоден шлях недоступний |
+| UI-03 | Run потребує встановленого терміналу з D7 | діалог/toast при ErrNotFound |
+| UI-04 | Bash highlight у Builder — мінімальний (shebang/comments/strings/keywords) | без важкої editor-lib (NFR RAM) |
+| DIST-01 | openSUSE — best-effort через rpm/dnf-подібні шляхи; не цільовий smoke | задокументовано в dist-notes |
+| NFR-01 | Idle RSS webview часто > 80 МБ на сучасних webkit2gtk | **D9 accepted-deviation v0.1** — не блокує реліз-тег; idle ≈216 МіБ на Ubuntu smoke 2026-11-14; `docs/NFR_NOTES.md`; POST-06 wontfix-for-v0.1 |
+
+## Відкриті дефекти середовища
+
+| ID | Опис | Нотатка |
+|----|------|---------|
+| ENV-01 | `wails doctor` на Ubuntu 24.04 шукає `libwebkit2gtk-4.0`, тоді як доступний 4.1 | Збірка через `-tags webkit2_41` у `build/build.sh` |
