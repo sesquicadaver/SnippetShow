@@ -62,6 +62,7 @@
 | FIX-SS-41 | Nav columns: drop Status/Summary; wiki lead desc | name-first list; Favorites description above man |
 | FIX-SS-42 | Unify button primary chrome (variant B) | one `btn-primary` gold; kill `btn-accent`; `.toolbar .btn.btn-primary` wins |
 | FIX-SS-43 | Dark chrome for Section / letter selects | `color-scheme: dark`; appearance:none; match search/btn tokens |
+| FIX-SS-44 | Base-command row for Script Builder (R1) | always bare `cmd` row above man flags; empty-flags no longer blocks + Script |
 
 ## Backlog (після v0.1 / відкладено)
 

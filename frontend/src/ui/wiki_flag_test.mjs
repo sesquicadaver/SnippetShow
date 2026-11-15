@@ -5,10 +5,12 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  bareCommandLine,
   commandFromFlag,
   expandBraceOptions,
   normalizeManFlag,
   renderDescriptionLead,
+  renderManTableBody,
   shellSafeProgram,
 } from './wiki.js';
 
@@ -63,5 +65,34 @@ describe('expandBraceOptions (SS-26)', () => {
     const rows = expandBraceOptions('-v', 'verbose');
     assert.equal(rows.length, 1);
     assert.equal(rows[0].flag, '-v');
+  });
+});
+
+describe('bare command row (SS-44)', () => {
+  it('bareCommandLine is shell-safe program alone', () => {
+    assert.equal(bareCommandLine('clear'), 'clear');
+    assert.equal(bareCommandLine('['), '/usr/bin/[');
+  });
+
+  it('always renders + Script / checkbox for bare cmd when flags empty', () => {
+    const html = renderManTableBody('clear', [], new Set(), { sourceEmpty: true, filterActive: false });
+    assert.match(html, /data-bare="1"/);
+    assert.match(html, /data-action="check-script"[^>]*data-cmd="clear"/);
+    assert.match(html, /data-action="script"/);
+    assert.match(html, /Базова команда/);
+    assert.match(html, /Прапорців|прапорців/);
+  });
+
+  it('keeps bare row above flags and dedupes identical bare lines', () => {
+    const html = renderManTableBody(
+      'ls',
+      [{ flag: '-l', description: 'long' }, { flag: '', description: 'noop' }],
+      new Set(['ls']),
+      { sourceEmpty: false, filterActive: false },
+    );
+    assert.match(html, /man-bare-row[\s\S]*data-cmd="ls"[\s\S]*checked/);
+    assert.match(html, /data-cmd="ls -l"/);
+    // empty flag expands to bare — must not duplicate a second bare action row
+    assert.equal((html.match(/data-bare="1"/g) || []).length, 1);
   });
 });
