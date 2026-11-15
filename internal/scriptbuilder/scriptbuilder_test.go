@@ -1,0 +1,163 @@
+package scriptbuilder
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func TestShebang(t *testing.T) {
+	if Shebang != "#!/usr/bin/env bash" {
+		t.Fatalf("unexpected shebang: %q", Shebang)
+	}
+}
+
+func TestDraftAddGenerateReorder(t *testing.T) {
+	d := NewDraft()
+	d.Add("  echo one  ")
+	d.Add("")
+	d.Add("echo two")
+	d.Add("echo three")
+	if d.Count() != 3 {
+		t.Fatalf("count=%d", d.Count())
+	}
+	if err := d.MoveUp(1); err != nil {
+		t.Fatal(err)
+	}
+	snap := d.Snapshot()
+	if snap[0] != "echo two" || snap[1] != "echo one" {
+		t.Fatalf("%v", snap)
+	}
+	if err := d.MoveDown(0); err != nil {
+		t.Fatal(err)
+	}
+	snap = d.Snapshot()
+	if snap[0] != "echo one" || snap[1] != "echo two" {
+		t.Fatalf("%v", snap)
+	}
+	if err := d.Remove(1); err != nil {
+		t.Fatal(err)
+	}
+	if d.Count() != 2 {
+		t.Fatalf("after remove: %d", d.Count())
+	}
+	body := d.Generate()
+	if !strings.HasPrefix(body, Shebang+"\n") {
+		t.Fatalf("body=%q", body)
+	}
+	if !strings.Contains(body, "echo one\n") || !strings.Contains(body, "echo three\n") {
+		t.Fatalf("body=%q", body)
+	}
+	d.Clear()
+	if d.Count() != 0 {
+		t.Fatal("clear failed")
+	}
+}
+
+func TestApplyBodyPreservesBlankLines(t *testing.T) {
+	d := NewDraft()
+	src := Shebang + "\necho a\n\necho b\n"
+	d.ApplyBody(src)
+	snap := d.Snapshot()
+	if len(snap) != 3 || snap[0] != "echo a" || snap[1] != "" || snap[2] != "echo b" {
+		t.Fatalf("blank lines lost: %#v", snap)
+	}
+	got := d.Generate()
+	if got != src {
+		t.Fatalf("round-trip:\n got=%q\nwant=%q", got, src)
+	}
+	// Second ApplyBody must keep blanks (editor blur / SetScriptBody path).
+	d.ApplyBody(got)
+	if d.Generate() != src {
+		t.Fatalf("second round-trip failed: %q", d.Generate())
+	}
+}
+
+func TestApplyBodyKeepsInnerShebangLine(t *testing.T) {
+	d := NewDraft()
+	src := Shebang + "\necho start\n#!/not-shebang\necho end\n"
+	d.ApplyBody(src)
+	snap := d.Snapshot()
+	if len(snap) != 3 || snap[1] != "#!/not-shebang" {
+		t.Fatalf("inner #! stripped: %#v", snap)
+	}
+	if !strings.Contains(d.Generate(), "#!/not-shebang\n") {
+		t.Fatalf("generate lost inner #!: %q", d.Generate())
+	}
+}
+
+func TestSetLinesStillDenseForListOps(t *testing.T) {
+	d := NewDraft()
+	d.SetLines([]string{Shebang, "echo a", "", "#!/x", "echo b"})
+	snap := d.Snapshot()
+	if len(snap) != 2 || snap[0] != "echo a" || snap[1] != "echo b" {
+		t.Fatalf("SetLines dense filter broken: %#v", snap)
+	}
+}
+
+func TestApplyBodyAndEnsureShebang(t *testing.T) {
+	d := NewDraft()
+	d.ApplyBody(Shebang + "\necho a\n\necho b\n")
+	if d.Count() != 3 {
+		t.Fatalf("%v", d.Snapshot())
+	}
+	got := EnsureShebang("echo x\n")
+	if !strings.HasPrefix(got, Shebang+"\n") {
+		t.Fatalf("%q", got)
+	}
+	got2 := EnsureShebang("#!/bin/sh\necho y\n")
+	if !strings.HasPrefix(got2, Shebang+"\n") || strings.Contains(got2, "#!/bin/sh") {
+		t.Fatalf("%q", got2)
+	}
+	// EnsureShebang must not strip an inner #! line.
+	got3 := EnsureShebang(Shebang + "\necho a\n#!/inner\necho b\n")
+	if !strings.Contains(got3, "#!/inner\n") {
+		t.Fatalf("EnsureShebang stripped inner #!: %q", got3)
+	}
+}
+
+func TestRemoveCommandLastMatch(t *testing.T) {
+	d := NewDraft()
+	d.Add("echo a")
+	d.Add("echo b")
+	d.Add("echo a")
+	if !d.RemoveCommand("echo a") {
+		t.Fatal("expected remove")
+	}
+	snap := d.Snapshot()
+	if len(snap) != 2 || snap[0] != "echo a" || snap[1] != "echo b" {
+		t.Fatalf("should remove last match: %#v", snap)
+	}
+	if d.RemoveCommand("missing") {
+		t.Fatal("missing command should not remove")
+	}
+	if !d.RemoveCommand("  echo a  ") {
+		t.Fatal("trim match expected")
+	}
+	if d.Count() != 1 || d.Snapshot()[0] != "echo b" {
+		t.Fatalf("%v", d.Snapshot())
+	}
+}
+
+func TestWriteExecutable(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "demo.sh")
+	if err := WriteExecutable(path, "echo hi\n"); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode()&0o111 == 0 {
+		t.Fatalf("not executable: %v", info.Mode())
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(string(data), Shebang+"\n") {
+		t.Fatalf("%q", data)
+	}
+}
