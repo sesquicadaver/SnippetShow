@@ -78,6 +78,7 @@
 | SS-43 | Section / letter `<select>` білі на темному UI | **done** — `color-scheme: dark`; `appearance: none` + `--bg-elev` / `--ink`; option tokens |
 | SS-44 | Без man-прапорців неможливо + Script | **done** — завжди рядок «Базова команда» (checkbox/Copy/Run/+ Script) над flags |
 | SS-45 | Section/letter `<select>` лишаються білими (WebKitGTK) | **done** — custom `.toolbar-select` (button+listbox); native select прибрано |
+| SS-46 | Custom toolbar selects не відкриваються | **done** — `.toolbar` overflow:visible; pointerdown toggle; skip patch while open |
 
 ## Відомі обмеження Core / Wiki / Builder
 
