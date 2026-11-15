@@ -507,3 +507,38 @@ func TestParseManyPoolStillConcurrent(t *testing.T) {
 		t.Fatalf("ParseMany pool not concurrent: maxFlight=%d (want ≥2)", maxFlight)
 	}
 }
+
+func TestUpdateIndexNamesOnlyDoesNotEnrich(t *testing.T) {
+	store := openStore(t)
+	binDir := t.TempDir()
+	writeExec(t, binDir, "tool")
+	u := &Updater{
+		Store: store,
+		Scanner: &scanner.Scanner{
+			Runner:        &mockExec{bins: map[string]string{"dpkg-query": "/usr/bin/dpkg-query"}},
+			PathEnv:       binDir,
+			Home:          t.TempDir(),
+			SkipCanonical: true,
+		},
+		Parser: &manparser.Parser{Runner: &mockMan{
+			summary: map[string]string{"tool": "sample tool"},
+			raw:     map[string]string{"tool": sampleMan},
+		}},
+		ParseOnUpdate: true,
+		Workers:       4,
+	}
+	res, err := u.UpdateIndex(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Added < 1 || res.Parsed != 0 {
+		t.Fatalf("names-only UpdateIndex: %+v", res)
+	}
+	p, err := store.GetProgramByName("tool")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Category != "" || p.Summary != "" || p.ManParsed {
+		t.Fatalf("SS-36b: UpdateIndex must not enrich/parse: %+v", p)
+	}
+}

@@ -25,6 +25,79 @@ type sqlExec interface {
 const programSelectCols = `id, name, COALESCE(package_name,''), COALESCE(summary,''), COALESCE(version,''),
        is_installed, man_parsed, is_favorite, COALESCE(category,''), COALESCE(man_status,'unknown')`
 
+// DefaultInstalledChunkSize is the transactional chunk for PATH name upserts (SS-36b).
+const DefaultInstalledChunkSize = 500
+
+// UpsertInstalledNamesBatch marks PATH command names as installed in chunks with
+// deferred FTS (+ light packages mirror). Skips no-op rows that are already installed
+// to keep UpdateIndex names-pass fast (SS-36b / D13.1).
+func (s *Store) UpsertInstalledNamesBatch(names []string, chunkSize int, onChunk func(done, total int)) (added, updated int, err error) {
+	if chunkSize <= 0 {
+		chunkSize = DefaultInstalledChunkSize
+	}
+	total := len(names)
+	for i := 0; i < total; i += chunkSize {
+		end := i + chunkSize
+		if end > total {
+			end = total
+		}
+		tx, err := s.db.Begin()
+		if err != nil {
+			return added, updated, err
+		}
+		var touched []int64
+		var mirror []CatalogEntry
+		for _, name := range names[i:end] {
+			name = strings.TrimSpace(name)
+			if name == "" {
+				continue
+			}
+			existing, gerr := getProgramByNameExec(tx, name)
+			if gerr == nil && existing.IsInstalled {
+				continue
+			}
+			isNew := gerr == sql.ErrNoRows
+			if gerr != nil && !isNew {
+				_ = tx.Rollback()
+				return added, updated, gerr
+			}
+			id, uerr := s.upsertProgramExec(tx, Program{
+				Name:        name,
+				IsInstalled: true,
+				ManStatus:   ManStatusUnknown,
+			}, false)
+			if uerr != nil {
+				_ = tx.Rollback()
+				return added, updated, uerr
+			}
+			touched = append(touched, id)
+			mirror = append(mirror, CatalogEntry{Name: name, PackageName: name})
+			if isNew {
+				added++
+			} else {
+				updated++
+			}
+		}
+		if err := tx.Commit(); err != nil {
+			return added, updated, err
+		}
+		for _, id := range touched {
+			if err := s.syncFTS(id); err != nil {
+				return added, updated, err
+			}
+		}
+		if len(mirror) > 0 {
+			if _, err := s.UpsertPackagesBatch(mirror, chunkSize, nil); err != nil {
+				return added, updated, err
+			}
+		}
+		if onChunk != nil {
+			onChunk(end, total)
+		}
+	}
+	return added, updated, nil
+}
+
 // UpsertProgram inserts or updates a program by unique name.
 // On conflict, metadata and install flags are refreshed; man_parsed is reset
 // only when the caller sets ResetManParsed (version change / reparse needed).
