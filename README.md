@@ -9,7 +9,7 @@
 | Платформи | Debian/Ubuntu, Arch, Fedora — **лише Linux** |
 | Ліцензія | [MIT](LICENSE) |
 
-Канонічні docs: [`docs/DECISIONS.md`](docs/DECISIONS.md) (D1–D13) · [`docs/LIVING_SPEC.md`](docs/LIVING_SPEC.md) · [`docs/ROADMAP_FIXES.md`](docs/ROADMAP_FIXES.md) · [`docs/TODO_FIXME.md`](docs/TODO_FIXME.md) · [`docs/NFR_NOTES.md`](docs/NFR_NOTES.md).
+Канонічні docs: [`docs/DECISIONS.md`](docs/DECISIONS.md) (D1–D13) · [`docs/LIVING_SPEC.md`](docs/LIVING_SPEC.md) · [`docs/ROADMAP_FIXES.md`](docs/ROADMAP_FIXES.md) · [`docs/NFR_NOTES.md`](docs/NFR_NOTES.md).
 
 ## Можливості (стан `main`)
 
