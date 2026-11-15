@@ -65,6 +65,7 @@
 | FIX-SS-44 | Base-command row for Script Builder (R1) | always bare `cmd` row above man flags; empty-flags no longer blocks + Script |
 | FIX-SS-45 | Custom dark toolbar selects (WebKitGTK) | replace native Section/letter `<select>` with button+listbox |
 | FIX-SS-46 | Toolbar custom selects do not open | `.toolbar` overflow:visible (was clipping menus); pointerdown toggle |
+| FIX-SS-47 | Letter/Section menu click-through | `.toolbar` z-index:30 (stack above `.app-body`); option pointerdown + eatNextClick |
 | FIX-SS-52 | Bootstrap enrich when categories empty | warm names-only DB: queue EnrichMetadata not only on `added > 0` |
 
 ## Backlog (після v0.1 / відкладено)
