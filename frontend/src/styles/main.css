@@ -56,6 +56,10 @@ html, body {
 /* SS-36a/d + SS-40: one coherent toolbar composition (no sprawl / wrap chaos). */
 .toolbar {
   position: relative;
+  /* SS-47: backdrop-filter creates a stacking context; without an explicit
+     z-index the overflowing listbox paints under .app-body (semi-transparent
+     nav shows the menu through, but hits go to program rows — click-through). */
+  z-index: 30;
   display: grid;
   grid-template-columns: auto auto minmax(12rem, 1fr) auto auto;
   grid-template-areas:
@@ -219,8 +223,8 @@ html, body {
   z-index: 80;
   top: calc(100% + 2px);
   left: 0;
-  right: 0;
-  min-width: 100%;
+  /* Letter trigger is narrow; keep listbox at least as wide as a letter cell. */
+  min-width: max(100%, 4.5rem);
   max-height: min(16rem, 50vh);
   margin: 0;
   padding: 0.2rem 0;
@@ -230,6 +234,8 @@ html, body {
   background: var(--bg-elev);
   color: var(--ink);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  /* SS-47: receive hits even when visually overlapping .app-nav / list. */
+  pointer-events: auto;
 }
 
 .toolbar-filters .toolbar-select.is-open {
@@ -244,6 +250,7 @@ html, body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  pointer-events: auto;
 }
 
 .toolbar-filters .toolbar-select-option:hover,

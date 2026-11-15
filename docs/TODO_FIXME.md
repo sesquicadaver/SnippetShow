@@ -79,6 +79,7 @@
 | SS-44 | Без man-прапорців неможливо + Script | **done** — завжди рядок «Базова команда» (checkbox/Copy/Run/+ Script) над flags |
 | SS-45 | Section/letter `<select>` лишаються білими (WebKitGTK) | **done** — custom `.toolbar-select` (button+listbox); native select прибрано |
 | SS-46 | Custom toolbar selects не відкриваються | **done** — `.toolbar` overflow:visible; pointerdown toggle; skip patch while open |
+| SS-47 | Letter/Section menu click-through → programs list | **done** — `.toolbar` z-index above `.app-body`; option pointerdown + eatNextClick |
 | SS-52 | Section filter лише «Усі секції» на warm DB | **done** — bootstrap `queueEnrich` коли categories порожні (не лише `added > 0`) |
 
 ## Відомі обмеження Core / Wiki / Builder

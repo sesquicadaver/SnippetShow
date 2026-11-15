@@ -299,11 +299,12 @@ function bindToolbarSelect(host, root, onChange) {
     setToolbarSelectOpen(host, root, willOpen);
   });
 
+  // Activate on pointerdown (SS-47): stopPropagation keeps the document
+  // outside-closer from racing; preventDefault + a one-shot capture click
+  // eater stops the following click from hitting .nav-row after the menu closes.
   menu.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
     e.stopPropagation();
-  });
-
-  menu.addEventListener('click', (e) => {
     const el = eventElement(e);
     const opt = el?.closest?.('[data-value]');
     if (!opt || !menu.contains(opt)) return;
@@ -311,7 +312,29 @@ function bindToolbarSelect(host, root, onChange) {
     root.dataset.value = value;
     closeToolbarSelects(host);
     onChange?.(value);
+    eatNextClick();
   });
+}
+
+/**
+ * Swallow the click that follows a menu option pointerdown so it cannot
+ * activate the programs list under the closed listbox (SS-47).
+ */
+export function eatNextClick() {
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    document.removeEventListener('click', eat, true);
+  };
+  const eat = (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    finish();
+  };
+  document.addEventListener('click', eat, true);
+  // Failsafe if pointer cancels without a click.
+  setTimeout(finish, 500);
 }
 
 function patchToolbar(host, state) {

@@ -1,7 +1,8 @@
 /**
- * SS-43 / SS-45 / SS-46: Section / letter filters — dark chrome + working open/toggle.
+ * SS-43 / SS-45 / SS-46 / SS-47: Section / letter filters — dark chrome, open, hit-test.
  * SS-45 replaces native <select> with custom toolbar-select under WebKitGTK.
  * SS-46: menus must not be clipped by .toolbar overflow; toggle must open.
+ * SS-47: toolbar stacks above .app-body so listbox options receive clicks.
  * Run: node --test frontend/src/ui/select_chrome_test.mjs
  */
 import assert from 'node:assert/strict';
@@ -11,6 +12,7 @@ import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
   closeToolbarSelects,
+  eatNextClick,
   eventElement,
   patchToolbarSelect,
   setToolbarSelectOpen,
@@ -64,6 +66,46 @@ describe('toolbar select chrome (SS-45 / SS-46)', () => {
     const decls = toolbarBlock[0].replace(/\/\*[\s\S]*?\*\//g, '');
     assert.match(decls, /overflow:\s*visible/);
     assert.equal(/overflow:\s*hidden/.test(decls), false);
+  });
+
+  it('stacks .toolbar above .app-body so overflowing menus receive hits (SS-47)', () => {
+    const toolbarBlock = css.match(/\.toolbar\s*\{[^}]*\}/);
+    assert.ok(toolbarBlock, 'expected .toolbar rule');
+    const decls = toolbarBlock[0].replace(/\/\*[\s\S]*?\*\//g, '');
+    assert.match(decls, /z-index:\s*30/);
+    assert.match(css, /\.toolbar-select-menu\s*\{[^}]*pointer-events:\s*auto/s);
+    assert.match(css, /\.toolbar-select-option\s*\{[^}]*pointer-events:\s*auto/s);
+    assert.match(toolbarSrc, /eatNextClick/);
+    assert.match(toolbarSrc, /menu\.addEventListener\('pointerdown'/);
+  });
+
+  it('eatNextClick swallows the following capture-phase click (SS-47)', () => {
+    const calls = [];
+    const prev = globalThis.document;
+    const listeners = new Map();
+    globalThis.document = {
+      addEventListener(type, fn, opts) {
+        listeners.set(type, { fn, opts });
+      },
+      removeEventListener(type, fn) {
+        const hit = listeners.get(type);
+        if (hit && hit.fn === fn) listeners.delete(type);
+      },
+    };
+    try {
+      eatNextClick();
+      assert.equal(listeners.has('click'), true);
+      assert.equal(listeners.get('click').opts, true);
+      const ev = {
+        preventDefault() { calls.push('prevent'); },
+        stopPropagation() { calls.push('stop'); },
+      };
+      listeners.get('click').fn(ev);
+      assert.deepEqual(calls, ['prevent', 'stop']);
+      assert.equal(listeners.has('click'), false);
+    } finally {
+      globalThis.document = prev;
+    }
   });
 
   it('renders markup without native <select> and patches labels', () => {
