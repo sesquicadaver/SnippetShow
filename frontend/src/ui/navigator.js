@@ -1,6 +1,6 @@
 import uk from '../i18n/uk.js';
 
-const ROW_H = 36;
+const ROW_H = 40;
 const OVERSCAN = 12;
 
 /**
@@ -32,6 +32,17 @@ export function resolveNavState(host) {
 }
 
 /**
+ * SS-34: show labeled «Обрати» only for installed PATH commands (not packages).
+ * @param {{kind?: string, isInstalled?: boolean}|null|undefined} p
+ * @returns {boolean}
+ */
+export function shouldShowFavoriteControl(p) {
+  if (!p) return false;
+  if (p.kind === 'package') return false;
+  return !!p.isInstalled;
+}
+
+/**
  * Virtualized left-panel program list.
  * @param {HTMLElement} host
  * @param {{
@@ -57,6 +68,7 @@ export function renderNavigator(host, state) {
           <span class="nav-count"></span>
         </div>
         <div class="nav-table-head" aria-hidden="true">
+          <span class="nav-col-fav">${esc(uk.colFavorite || uk.favoriteAdd)}</span>
           <span>${esc(uk.colName)}</span>
           <span>${esc(uk.colSummary)}</span>
           <span>${esc(uk.colStatus)}</span>
@@ -132,15 +144,19 @@ function paintWindow(host) {
     const p = programs[i];
     const selected = st.selected === p.name;
     const installed = !!p.isInstalled;
-    const showFav = p.kind !== 'package' && installed;
+    const showFav = shouldShowFavoriteControl(p);
+    const favLabel = p.isFavorite ? (uk.favoriteOn || uk.favoriteRemove) : uk.favoriteAdd;
     rows.push(`
       <div class="nav-row ${selected ? 'is-selected' : ''} ${installed ? 'is-installed' : 'is-missing'}"
         style="height:${ROW_H}px">
         ${showFav ? `
-          <button type="button" class="nav-fav ${p.isFavorite ? 'is-on' : ''}"
-            data-fav="${esc(p.name)}" title="${esc(p.isFavorite ? uk.favoriteRemove : uk.favoriteAdd)}"
-            aria-pressed="${p.isFavorite ? 'true' : 'false'}">★</button>
-        ` : `<span class="nav-fav-spacer"></span>`}
+          <label class="nav-fav-label ${p.isFavorite ? 'is-on' : ''}" title="${esc(p.isFavorite ? uk.favoriteRemove : uk.favoriteAdd)}">
+            <input type="checkbox" class="nav-fav-check" data-fav="${esc(p.name)}"
+              ${p.isFavorite ? 'checked' : ''}
+              aria-label="${esc(favLabel)}"/>
+            <span class="nav-fav-text">${esc(favLabel)}</span>
+          </label>
+        ` : `<span class="nav-fav-spacer" aria-hidden="true"></span>`}
         <button type="button" class="nav-row-main" data-name="${esc(p.name)}">
           <span class="nav-name" title="${esc(p.name)}">${esc(p.name)}</span>
           <span class="nav-summary" title="${esc(p.summary || '')}">${esc(p.summary || '—')}</span>
@@ -153,13 +169,17 @@ function paintWindow(host) {
   win.querySelectorAll('[data-name]').forEach((btn) => {
     btn.addEventListener('click', () => st.onSelect(btn.getAttribute('data-name')));
   });
-  win.querySelectorAll('[data-fav]').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
+  win.querySelectorAll('.nav-fav-check').forEach((input) => {
+    input.addEventListener('click', (e) => e.stopPropagation());
+    input.addEventListener('change', (e) => {
       e.stopPropagation();
-      const name = btn.getAttribute('data-fav');
-      const on = !btn.classList.contains('is-on');
-      st.onFavorite?.(name, on);
+      const name = input.getAttribute('data-fav');
+      st.onFavorite?.(name, !!input.checked);
     });
+  });
+  // Clicking the label text toggles the checkbox; prevent row select.
+  win.querySelectorAll('.nav-fav-label').forEach((label) => {
+    label.addEventListener('click', (e) => e.stopPropagation());
   });
 }
 

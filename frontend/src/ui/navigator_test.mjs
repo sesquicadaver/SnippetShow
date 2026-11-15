@@ -4,7 +4,7 @@
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { resolveNavState, windowRange } from './navigator.js';
+import { resolveNavState, shouldShowFavoriteControl, windowRange } from './navigator.js';
 
 describe('windowRange', () => {
   it('clamps to program count', () => {
@@ -36,5 +36,18 @@ describe('resolveNavState (SS-23)', () => {
   it('returns null when host has no stored state', () => {
     assert.equal(resolveNavState({}), null);
     assert.equal(resolveNavState(null), null);
+  });
+});
+
+describe('shouldShowFavoriteControl (SS-34)', () => {
+  it('shows for installed PATH commands', () => {
+    assert.equal(shouldShowFavoriteControl({ kind: 'command', isInstalled: true }), true);
+    assert.equal(shouldShowFavoriteControl({ isInstalled: true }), true);
+  });
+
+  it('hides for packages and uninstalled rows', () => {
+    assert.equal(shouldShowFavoriteControl({ kind: 'package', isInstalled: true }), false);
+    assert.equal(shouldShowFavoriteControl({ kind: 'command', isInstalled: false }), false);
+    assert.equal(shouldShowFavoriteControl(null), false);
   });
 });

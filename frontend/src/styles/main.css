@@ -266,14 +266,21 @@ html, body {
 
 .nav-table-head {
   display: grid;
-  grid-template-columns: 28% 1fr 30%;
-  gap: 0.4rem;
-  padding: 0.4rem 0.75rem;
+  grid-template-columns: 6.5rem 24% 1fr 28%;
+  gap: 0.35rem;
+  padding: 0.4rem 0.5rem 0.4rem 0.35rem;
   color: var(--muted);
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   border-bottom: 1px solid var(--line);
+  align-items: center;
+}
+
+.nav-col-fav {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
 }
 
 .nav-scroll {
@@ -293,8 +300,8 @@ html, body {
 
 .nav-row {
   display: grid;
-  grid-template-columns: 1.6rem 1fr;
-  gap: 0.25rem;
+  grid-template-columns: 6.5rem 1fr;
+  gap: 0.35rem;
   width: 100%;
   align-items: center;
   padding: 0 0.5rem 0 0.35rem;
@@ -309,8 +316,8 @@ html, body {
 
 .nav-row-main {
   display: grid;
-  grid-template-columns: 28% 1fr 30%;
-  gap: 0.4rem;
+  grid-template-columns: 24% 1fr 28%;
+  gap: 0.35rem;
   width: 100%;
   align-items: center;
   min-width: 0;
@@ -324,20 +331,50 @@ html, body {
   font-size: inherit;
 }
 
-.nav-fav,
-.nav-fav-spacer {
-  width: 1.4rem;
-  height: 1.4rem;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
+.nav-fav-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0.15rem 0.2rem;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 0.95rem;
-  line-height: 1;
-  padding: 0;
+  color: var(--ink);
+  font-size: 0.78rem;
+  line-height: 1.1;
+  user-select: none;
 }
 
-.nav-fav.is-on { color: var(--accent, #c9a227); }
+.nav-fav-label:hover {
+  background: rgba(196, 163, 90, 0.16);
+}
+
+.nav-fav-label.is-on {
+  color: var(--accent-ink);
+  background: rgba(196, 163, 90, 0.28);
+}
+
+.nav-fav-check {
+  width: 0.95rem;
+  height: 0.95rem;
+  margin: 0;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.nav-fav-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.nav-fav-spacer {
+  display: block;
+  min-height: 1rem;
+}
 
 .nav-row:hover { background: var(--row-hover); }
 .nav-row.is-selected { background: var(--row-selected); }
