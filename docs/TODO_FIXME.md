@@ -70,6 +70,7 @@
 | SS-34 | Явний контроль «Обрати» / «В обраному» у списку | **done** — checkbox+підпис + колонка «Обране»; SetFavorite без змін |
 | SS-35 | Артефакти збірки в git | **done** — untrack `frontend/wailsjs/`, `package.json.md5`; посилено `.gitignore` |
 | SS-36a | Щільний dual-row toolbar | **done** — `grid-template-areas`; compact A–Z; thin progress; patchToolbar без змін |
+| SS-36d | Brand subtitle + alphabet strip | **done** — лише «SnippetShow»; літера = `<select>` (A–Z / 0–9) |
 
 ## Відомі обмеження Core / Wiki / Builder
 

@@ -56,6 +56,7 @@
 | FIX-SS-34 | Явний «Обрати» у навігаторі (не лише ★) | labeled checkbox + col «Обране»; `shouldShowFavoriteControl` |
 | FIX-SS-35 | Артефакти збірки не в git | untrack wailsjs + md5; ignore AppImage/coverage/.wails |
 | FIX-SS-36a | Toolbar densify (≤2 смуги) | dual-row CSS areas; compact alphabet; thin progress |
+| FIX-SS-36d | Без subtitle; літера = select | brand name only; letter dropdown replaces A–Z strip |
 
 ## Backlog (після v0.1 / відкладено)
 

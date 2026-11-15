@@ -24,6 +24,7 @@ export const uk = {
   statusKindPackage: 'Пакет',
   alphabetAll: 'Всі',
   alphabetDigits: '0–9',
+  alphabetFilter: 'Літера',
   updateIndex: 'Оновити індекс',
   updating: 'Оновлення…',
   cancelIndex: 'Скасувати',

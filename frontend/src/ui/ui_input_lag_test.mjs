@@ -5,7 +5,11 @@
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { shouldSyncSearchValue } from './toolbar.js';
+import {
+  letterFilterOptions,
+  normalizeLetterValue,
+  shouldSyncSearchValue,
+} from './toolbar.js';
 import {
   SEARCH_DEBOUNCE_MS,
   shouldShowListLoading,
@@ -24,6 +28,24 @@ describe('shouldSyncSearchValue (SS-30)', () => {
   it('syncs when unfocused and values differ', () => {
     assert.equal(shouldSyncSearchValue(false, 'old', 'new'), true);
     assert.equal(shouldSyncSearchValue(false, 'same', 'same'), false);
+  });
+});
+
+describe('letter filter select (SS-36d)', () => {
+  it('exposes Всі, A–Z, and 0–9 options', () => {
+    const opts = letterFilterOptions();
+    assert.equal(opts[0].value, 'all');
+    assert.equal(opts[opts.length - 1].value, '0-9');
+    assert.equal(opts.length, 28);
+    assert.ok(opts.some((o) => o.value === 'A'));
+    assert.ok(opts.some((o) => o.value === 'Z'));
+  });
+
+  it('normalizes letter state for the select value', () => {
+    assert.equal(normalizeLetterValue(''), 'all');
+    assert.equal(normalizeLetterValue('b'), 'B');
+    assert.equal(normalizeLetterValue('0-9'), '0-9');
+    assert.equal(normalizeLetterValue('??'), 'all');
   });
 });
 
