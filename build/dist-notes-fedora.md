@@ -2,12 +2,25 @@
 
 **Політика v0.1 (D12):** Fedora smoke **не обов’язковий** для тегу. Статус: **deferred** — після готовності базової системи (зафіксовано 2026-11-14). Best-effort нотатки нижче лишаються валідними.
 
-## Runtime / build deps
+## Для збірки
 
 ```bash
-sudo dnf install gtk3-devel webkit2gtk4.1-devel golang npm gcc pkgconf-pkg-config
-# або webkit2gtk4.0-devel / webkit2gtk3-devel залежно від релізу
+sudo dnf install golang npm gcc pkgconf-pkg-config \
+  gtk3-devel webkit2gtk4.1-devel
+# або webkit2gtk4.0-devel / webkit2gtk3-devel на старіших релізах
+# перевірте: go version ≥ 1.26
+go install github.com/wailsapp/wails/v2/cmd/wails@latest
+export PATH="$PATH:$(go env GOPATH)/bin"
 # clipboard: wl-clipboard / xclip
+```
+
+## Для роботи
+
+Запуск уже зібраного ELF — runtime shared libs (без `*-devel` / golang / npm / gcc):
+
+```bash
+sudo dnf install gtk3 webkit2gtk4.1
+# на старіших: webkit2gtk4.0 / webkit2gtk3
 ```
 
 ## Збірка

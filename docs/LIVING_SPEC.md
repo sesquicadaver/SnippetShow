@@ -4,8 +4,8 @@
 
 | ТЗ§ | Вимога (коротко) | Модуль | Тест | Статус |
 |-----|------------------|--------|------|--------|
-| §1 | Go 1.22+ / Wails v2 / SQLite modernc / ELF + webkit2gtk; staticcheck gate (SS-28); без артефактів збірки в git (SS-35) | `main.go`, `wails.json`, `go.mod`, `build/build.sh`, `.gitignore` | `scripts/ci-local.sh` (required staticcheck), `.github/workflows/ci.yml` | done |
-| §1 | Платформи Debian/Ubuntu, Arch, Fedora (лише Linux) | README; `build/dist-notes-*.md`; `scripts/ubuntu-dist-smoke.sh` | Ubuntu P4-16 checked (D12); Arch/Fedora deferred | done (Ubuntu); deferred (Arch/Fedora) |
+| §1 | Go ≥ 1.26 (`go.mod` 1.26.0) / Wails v2 / SQLite modernc / ELF + webkit2gtk; staticcheck gate (SS-28); без артефактів збірки в git (SS-35) | `main.go`, `wails.json`, `go.mod`, `build/build.sh`, `.gitignore` | `scripts/ci-local.sh` (required staticcheck), `.github/workflows/ci.yml` | done |
+| §1 | Платформи Debian/Ubuntu, Arch, Fedora (лише Linux); README deps: **Для збірки** / **Для роботи** | README; `build/dist-notes-*.md`; `scripts/ubuntu-dist-smoke.sh` | Ubuntu P4-16 checked (D12); Arch/Fedora deferred | done (Ubuntu); deferred (Arch/Fedora) |
 | §2.1 | System Scanner (PM + PATH + repo catalog batch upsert/FTS) | `internal/scanner`, `internal/db`, `internal/index` | `scanner_test.go`, `db_test.go`, `index_test.go` | done |
 | §2.2 | Man Parser (whatis, raw, OPTIONS regex, pool 4–8 у UpdateIndex); Run argv без ком (SS-20); `[`/`test` → `/usr/bin/*` (SS-25); brace-опції `{a\|s\|…}` (SS-26) | `internal/manparser`, `internal/scriptbuilder`, `frontend/src/ui/wiki.js` | `braces_test.go`, `builtins_test.go`, `wiki_flag_test.mjs` | done |
 | §2.3 | Incremental «Оновити індекс» names-first (SS-36b) + Section enrich після list paint (SS-40 / D13.9); warm bootstrap також queue enrich якщо categories порожні (SS-52); man reparse лише favorites | `internal/index`, `UpsertInstalledNamesBatch`, WAL `Open`, `shell.queueEnrich` / `shouldQueueBootstrapEnrich` | `index_test.go`; `db_test.go` batch; `ui_input_lag_test.mjs` keepVisible; `shell_select_test.mjs` SS-52 | done |

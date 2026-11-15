@@ -2,16 +2,33 @@
 
 **Політика v0.1 (D12):** Ubuntu — **обов’язковий** dist smoke для тегу; Arch/Fedora — пізніше / best-effort.
 
-## Runtime / build deps
+## Для збірки
 
 ```bash
 sudo apt update
-sudo apt install build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
+sudo apt install build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev \
+  nodejs npm
+# Go ≥ 1.26: на Ubuntu 24.04 дефолтний golang-go ≈ 1.22 — недостатньо для go.mod
+sudo apt install golang-1.26-go
+export PATH="/usr/lib/go-1.26/bin:$PATH"
+# альтернатива: tarball з https://go.dev/dl → /usr/local/go
+go install github.com/wailsapp/wails/v2/cmd/wails@latest
+export PATH="$PATH:$(go env GOPATH)/bin"
 # clipboard helpers (опційно): wl-clipboard | xclip | xsel
 # термінал з D7: gnome-terminal / x-terminal-emulator / …
 ```
 
 Ubuntu 24.04+: збірка з tag `webkit2_41` через `./build/build.sh`.
+
+## Для роботи
+
+Запуск уже зібраного ELF — лише runtime shared libs (без `-dev` / Go / Node / Wails):
+
+```bash
+sudo apt update
+sudo apt install libgtk-3-0 libwebkit2gtk-4.1-0
+# Ubuntu 24.04+ (t64): apt може підставити libgtk-3-0t64 / libwebkit2gtk-4.1-0t64
+```
 
 ## Збірка
 

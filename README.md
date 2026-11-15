@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Стек | Go ≥ 1.22 (фактично `go.mod` 1.26.0 через Wails v2.17.1) · Wails v2 · Vanilla JS (Vite) · SQLite FTS5 (`modernc.org/sqlite`) |
+| Стек | Go ≥ 1.26 (`go.mod` 1.26.0 / Wails v2.17.1) · Wails v2 · Vanilla JS (Vite) · SQLite FTS5 (`modernc.org/sqlite`) |
 | БД | `~/.local/share/linux-cmd-wiki/wiki.db` (**D1** / **D11** — без міграції шляху до публічного релізу) |
 | Платформи | Debian/Ubuntu, Arch, Fedora — **лише Linux** |
 | Ліцензія | [MIT](LICENSE) |
@@ -28,33 +28,76 @@
 
 ## Вимоги
 
-- Go 1.22+
-- Wails CLI v2: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
-- Node.js + npm
-- `gcc`, `pkg-config`, GTK3, webkit2gtk
+Два різні набори залежностей: **toolchain для збірки з джерела** і **shared libs для запуску вже зібраного ELF**. Деталі по дистрибутивах — у [`build/dist-notes-ubuntu.md`](build/dist-notes-ubuntu.md), [`build/dist-notes-arch.md`](build/dist-notes-arch.md), [`build/dist-notes-fedora.md`](build/dist-notes-fedora.md).
 
-### Залежності webkit2gtk
+### Для збірки
 
-**Debian / Ubuntu** — [`build/dist-notes-ubuntu.md`](build/dist-notes-ubuntu.md)
+Потрібні: **Go ≥ 1.26** (`go.mod` / Wails v2.17.1), **Node.js + npm** (CI: Node 20), **gcc**, **pkg-config**, **GTK3** + **webkit2gtk 4.1** (headers/`-dev`; або 4.0 на старіших релізах), **Wails CLI v2**.
+
+Після встановлення Go:
+
+```bash
+go install github.com/wailsapp/wails/v2/cmd/wails@latest
+export PATH="$PATH:$(go env GOPATH)/bin"   # додайте у ~/.bashrc / ~/.zshrc
+wails doctor
+```
+
+На Ubuntu 24.04+ / Fedora 40+ / сучасному Arch збірка йде з tag `webkit2_41` — це робить `./build/build.sh`. Якщо `wails doctor` скаржиться на відсутність webkit 4.0 при наявному 4.1 — ігнорувати (**ENV-01**).
+
+**Debian / Ubuntu**
 
 ```bash
 sudo apt update
-sudo apt install build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
+sudo apt install build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev \
+  nodejs npm
+# Go 1.26 (Ubuntu 24.04: дефолтний golang-go ≈ 1.22 — недостатньо для go.mod)
+sudo apt install golang-1.26-go
+export PATH="/usr/lib/go-1.26/bin:$PATH"
+# альтернатива: офіційний tarball з https://go.dev/dl → /usr/local/go
 ```
 
-Ubuntu 24.04+: збірка з tag `webkit2_41` (`./build/build.sh`).
-
-**Arch** — [`build/dist-notes-arch.md`](build/dist-notes-arch.md)
+**Arch / Manjaro / EndeavourOS**
 
 ```bash
-sudo pacman -S base-devel gtk3 webkit2gtk
+sudo pacman -S base-devel go npm gtk3 webkit2gtk-4.1
 ```
 
-**Fedora** — [`build/dist-notes-fedora.md`](build/dist-notes-fedora.md)
+На rolling Arch unversioned `webkit2gtk` застарілий — ставте **`webkit2gtk-4.1`**.
+
+**Fedora**
 
 ```bash
-sudo dnf install gtk3-devel webkit2gtk4.1-devel
+sudo dnf install golang npm gcc pkgconf-pkg-config \
+  gtk3-devel webkit2gtk4.1-devel
 ```
+
+Перевірте `go version` ≥ 1.26. На старіших Fedora можливі fallback: `webkit2gtk4.0-devel` / `webkit2gtk3-devel`.
+
+### Для роботи
+
+Щоб **запустити** уже зібраний `build/bin/SnippetShow`, достатньо runtime shared libs GTK3 і webkit2gtk (без повного `-dev` / `base-devel` toolchain, без Go/Node/Wails). Опційно: clipboard (`wl-clipboard` / `xclip`) і термінал для Run (D7).
+
+**Debian / Ubuntu**
+
+```bash
+sudo apt update
+sudo apt install libgtk-3-0 libwebkit2gtk-4.1-0
+# Ubuntu 24.04+ (t64): інколи libgtk-3-0t64 / libwebkit2gtk-4.1-0t64 — apt підставить transitional
+```
+
+**Arch / Manjaro / EndeavourOS**
+
+```bash
+sudo pacman -S gtk3 webkit2gtk-4.1
+```
+
+**Fedora**
+
+```bash
+sudo dnf install gtk3 webkit2gtk4.1
+```
+
+На старіших Fedora: `webkit2gtk4.0` / `webkit2gtk3` замість `webkit2gtk4.1`.
 
 ## Розробка / тести
 

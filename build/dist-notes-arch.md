@@ -2,15 +2,26 @@
 
 **Політика v0.1 (D12):** Arch smoke **не обов’язковий** для тегу. Статус: **deferred** — після готовності базової системи (зафіксовано 2026-11-14). Best-effort нотатки нижче лишаються валідними.
 
-## Runtime / build deps
+## Для збірки
 
 ```bash
-sudo pacman -S base-devel gtk3 webkit2gtk go npm
+sudo pacman -S base-devel go npm gtk3 webkit2gtk-4.1
+# unversioned webkit2gtk на rolling Arch застарілий — ставте webkit2gtk-4.1
+go install github.com/wailsapp/wails/v2/cmd/wails@latest
+export PATH="$PATH:$(go env GOPATH)/bin"
 # clipboard: wl-clipboard або xclip
 # термінал: kitty / alacritty / gnome-terminal — або export TERMINAL=…
 ```
 
-Якщо `pkg-config` бачить `webkit2gtk-4.1`, `build/build.sh` додасть `-tags webkit2_41`.
+Якщо `pkg-config` бачить `webkit2gtk-4.1`, `build/build.sh` додасть `-tags webkit2_41`. Rolling `go` зазвичай ≥ 1.26.
+
+## Для роботи
+
+Запуск уже зібраного ELF — runtime GTK/webkit (без `base-devel` / Go / npm / Wails):
+
+```bash
+sudo pacman -S gtk3 webkit2gtk-4.1
+```
 
 ## Збірка
 
