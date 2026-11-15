@@ -17,6 +17,8 @@ export function shouldSyncSearchValue(inputFocused, currentValue, nextQuery) {
 /**
  * Builds / updates the Wiki toolbar: mode radios, search, alphabet, update controls.
  * First call mounts DOM; later calls patch in place so the search input keeps focus (SS-30).
+ * Layout densify (SS-36a) is CSS-only: dual-row grid-template-areas on `.toolbar`
+ * (brand|modes|search|filters|actions / alphabet|status + thin progress hairline).
  * @param {HTMLElement} host
  * @param {{
  *   mode: string,

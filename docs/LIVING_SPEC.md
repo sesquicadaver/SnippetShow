@@ -11,7 +11,7 @@
 | §2.3 | Incremental «Оновити індекс» + reparse man при зміні версії | `internal/index` (`ParseOnUpdate`) | `index_test.go` | done |
 | §3 | SQLite schema + FTS5 path | `internal/db` | `db_test.go` | done |
 | §2.3 / P1-16 | App API: ScanInstalled, UpdateIndex(+cancel), GetProgram(+parseWarning), Search | `internal/app`, `app.go` | `api_test.go` | done |
-| §4.1–4.2 / P2 | Toolbar + навігатор (Встановлені/Обрані/Пакети, FTS, A–Z, Section, «Без man»); scroll SS-23; select SS-27; пошук SS-30; man-gate D13/SS-32; явний «Обрати»/«В обраному» (SS-34) | `frontend/src/ui/{toolbar,navigator,shell,wiki}.js`, `ListPrograms`, `SetFavorite` | `api_test.go`; `navigator_test.mjs` (`shouldShowFavoriteControl`); `shell_select_test.mjs`; `ui_input_lag_test.mjs`; `index` SetFavorite tests | done |
+| §4.1–4.2 / P2 | Toolbar + навігатор (Встановлені/Обрані/Пакети, FTS, A–Z, Section, «Без man»); scroll SS-23; select SS-27; пошук SS-30; man-gate D13/SS-32; явний «Обрати»/«В обраному» (SS-34); densify toolbar ≤2 смуги (SS-36a) | `frontend/src/ui/{toolbar,navigator,shell,wiki}.js`, `main.css`, `ListPrograms`, `SetFavorite` | `api_test.go`; `navigator_test.mjs` (`shouldShowFavoriteControl`); `shell_select_test.mjs`; `ui_input_lag_test.mjs`; `index` SetFavorite tests | done |
 | §4.3 / P2–P3 | Center Wiki man + Raw Man + install hint + checkbox↔draft + CRUD | `frontend/src/ui/wiki.js`, `GetProgram`, snippets API | `api_test.go`, `db_test.go` | done |
 | §4.3 | Clipboard X11/Wayland (+ Wails) | `internal/clipboard`, `App.CopyText` | `clipboard_test.go` | done |
 | §4.3 / §5 | Terminal Run + safety confirm (command-word + path/`env` wrappers) | `internal/terminal`, `internal/safety`, `App.RunCommand` | `terminal_test.go`, `safety_test.go`, `api_test.go` | done |
