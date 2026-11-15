@@ -46,7 +46,18 @@ func Open(path string) (*Store, error) {
 	if err != nil {
 		return nil, fmt.Errorf("db: open: %w", err)
 	}
-	sqlDB.SetMaxOpenConns(1)
+	// SS-40: WAL + a few conns so ListPrograms can paint while EnrichMetadata writes.
+	// Single-conn mode blocked reads for the whole enrich pass → stuck «Завантаження списку…».
+	sqlDB.SetMaxOpenConns(4)
+	sqlDB.SetMaxIdleConns(4)
+	if _, err := sqlDB.Exec(`PRAGMA journal_mode=WAL`); err != nil {
+		_ = sqlDB.Close()
+		return nil, fmt.Errorf("db: WAL: %w", err)
+	}
+	if _, err := sqlDB.Exec(`PRAGMA busy_timeout=8000`); err != nil {
+		_ = sqlDB.Close()
+		return nil, fmt.Errorf("db: busy_timeout: %w", err)
+	}
 
 	s := &Store{db: sqlDB, path: resolved}
 	if err := s.migrate(); err != nil {

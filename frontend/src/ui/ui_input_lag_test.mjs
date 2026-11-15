@@ -58,6 +58,11 @@ describe('search debounce / list loading (SS-30)', () => {
     assert.equal(shouldShowListLoading(0), true);
     assert.equal(shouldShowListLoading(12), false);
   });
+
+  it('SS-40: keepVisible skips loading overlay after names-pass', () => {
+    assert.equal(shouldShowListLoading(0, { keepVisible: true }), false);
+    assert.equal(shouldShowListLoading(0, { keepVisible: false }), true);
+  });
 });
 
 describe('createHighlightScheduler (SS-30)', () => {

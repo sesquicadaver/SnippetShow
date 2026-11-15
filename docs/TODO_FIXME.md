@@ -72,6 +72,7 @@
 | SS-36a | Щільний dual-row toolbar | **done** — `grid-template-areas`; compact A–Z; thin progress; patchToolbar без змін |
 | SS-36d | Brand subtitle + alphabet strip | **done** — лише «SnippetShow»; літера = `<select>` (A–Z / 0–9) |
 | SS-36b | UpdateIndex names-first + enrich у фоні | **done** — batch upsert імен; EnrichMetadata background; soft bootstrap |
+| SS-40 | Список порожній / Loading під час індексу; toolbar sprawl | **done** — list paint before enrich; WAL reads; toolbar composition |
 
 ## Відомі обмеження Core / Wiki / Builder
 

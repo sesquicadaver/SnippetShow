@@ -193,46 +193,16 @@ func (a *API) Close() error {
 	return err
 }
 
-// EnsureIndexed runs a fast first-run scan when the DB has no programs.
-// After a fresh FirstRun it kicks off background metadata enrich (D13.9).
+// EnsureIndexed runs a fast first-run scan when the DB has no programs (D13.1).
+// Caller should ListPrograms first, then EnrichMetadata (SS-40) — do not race enrich
+// against the first list paint on a single-writer SQLite connection.
 func (a *API) EnsureIndexed() (index.UpdateResult, error) {
 	if err := a.ensure(); err != nil {
 		return index.UpdateResult{}, err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	before, _ := a.store.ListPrograms(false)
-	res, err := a.updater.EnsureIndexed(ctx)
-	if err != nil {
-		return res, err
-	}
-	if len(before) == 0 && res.Added > 0 {
-		go a.runEnrichBackground()
-	}
-	return res, nil
-}
-
-func (a *API) runEnrichBackground() {
-	if err := a.ensure(); err != nil {
-		return
-	}
-	ctx, err := a.beginLongOp(10 * time.Minute)
-	if err != nil {
-		return
-	}
-	defer a.endLongOp()
-	a.emit(ProgressEvent{Phase: "enrich", Message: "Збагачення метаданих (Section / man)"})
-	progress := make(chan index.Progress, 32)
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		for p := range progress {
-			a.emit(ProgressEvent{Phase: p.Phase, Done: p.Done, Total: p.Total, Message: p.Message})
-		}
-	}()
-	_ = a.updater.EnrichMetadata(ctx, progress)
-	close(progress)
-	<-done
+	return a.updater.EnsureIndexed(ctx)
 }
 
 // ScanInstalled runs a PATH/PM scan and upserts installed programs (P1-16).
@@ -303,8 +273,8 @@ func isCancelErr(err error) bool {
 }
 
 // UpdateIndex performs a fast PATH names-only refresh (SS-36b / P1-15 / P2-7).
-// After names land, EnrichMetadata runs in the background (D13.9) so the UI can
-// reload the list without waiting for Section / man-presence enrich.
+// EnrichMetadata is NOT started here — the UI must reload the list first (SS-40),
+// then call EnrichMetadata so Section enrich cannot starve ListPrograms.
 func (a *API) UpdateIndex() (index.UpdateResult, error) {
 	if err := a.ensure(); err != nil {
 		return index.UpdateResult{}, err
@@ -339,8 +309,6 @@ func (a *API) UpdateIndex() (index.UpdateResult, error) {
 		Phase:   "done",
 		Message: fmt.Sprintf("Оновлено %d пакетів", res.Added+res.Updated+res.MarkedGone),
 	})
-	// Background Section / man enrich — does not block list paint (SS-36b).
-	go a.runEnrichBackground()
 	return res, nil
 }
 
