@@ -51,17 +51,17 @@ html, body {
   to { opacity: 1; transform: none; }
 }
 
-/* SS-36a: dual-row densify — ≤2 visual bands on desktop (≥1200px). */
+/* SS-36a/d: compact toolbar — brand name only; letter filter is a select. */
 .toolbar {
   position: relative;
   display: grid;
   grid-template-columns: auto auto minmax(10rem, 1fr) auto auto;
   grid-template-areas:
     "brand modes search filters actions"
-    "alpha alpha alpha status status";
+    "status status status status status";
   align-items: center;
   column-gap: 0.55rem;
-  row-gap: 0.35rem;
+  row-gap: 0.3rem;
   padding: 0.45rem 0.75rem 0.4rem;
   border-bottom: 1px solid var(--line);
   background: rgba(20, 26, 20, 0.72);
@@ -74,12 +74,10 @@ html, body {
 .toolbar-filters { grid-area: filters; }
 .toolbar-actions { grid-area: actions; }
 .toolbar-status { grid-area: status; }
-.alphabet { grid-area: alpha; }
 
 .toolbar-brand {
   display: flex;
-  align-items: baseline;
-  gap: 0.55rem;
+  align-items: center;
   min-width: 0;
 }
 
@@ -89,15 +87,6 @@ html, body {
   letter-spacing: -0.02em;
   line-height: 1;
   white-space: nowrap;
-}
-
-.toolbar-brand-sub {
-  color: var(--muted);
-  font-size: 0.78rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 14rem;
 }
 
 .toolbar-modes {
@@ -138,7 +127,8 @@ html, body {
   flex-shrink: 0;
 }
 
-.toolbar-filters .category-select {
+.toolbar-filters .category-select,
+.toolbar-filters .letter-select {
   max-width: 10rem;
   font: inherit;
   font-size: 0.8rem;
@@ -147,6 +137,12 @@ html, body {
   border: 1px solid rgba(231, 238, 228, 0.2);
   background: var(--panel, #1a1f1c);
   color: inherit;
+}
+
+/* Native dropdown scrolls vertically when the OS list is long (A–Z + digits). */
+.toolbar-filters .letter-select {
+  max-width: 5.5rem;
+  min-width: 4.5rem;
 }
 
 .toolbar-filters .noman-filter {
@@ -258,36 +254,8 @@ html, body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 22rem;
-}
-
-.alphabet {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 0.1rem;
-  overflow-x: auto;
-  min-width: 0;
-  scrollbar-width: thin;
-}
-
-.alpha {
-  flex: 0 0 auto;
-  min-width: 1.35rem;
-  padding: 0.15rem 0.22rem;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.72rem;
-  line-height: 1.1;
-}
-
-.alpha.is-active,
-.alpha:hover {
-  color: var(--ink);
-  border-color: var(--line);
-  background: var(--row-hover);
+  max-width: 100%;
+  text-align: right;
 }
 
 .app-body {
@@ -959,21 +927,16 @@ html, body {
   line-height: 1.45;
 }
 
-@media (max-width: 1280px) {
-  .toolbar-brand-sub { display: none; }
-}
-
 @media (max-width: 1100px) {
   .app-body {
     grid-template-columns: minmax(260px, 34vw) minmax(0, 1fr);
   }
   .app-builder { display: none; }
-  /* Keep dual-row; drop brand from first band to free space for search/filters. */
   .toolbar {
     grid-template-columns: auto minmax(8rem, 1fr) auto auto;
     grid-template-areas:
       "modes search filters actions"
-      "alpha alpha status status";
+      "status status status status";
   }
   .toolbar-brand { display: none; }
 }
@@ -993,10 +956,9 @@ html, body {
       "search"
       "filters"
       "actions"
-      "alpha"
       "status";
   }
   .toolbar-brand { display: none; }
   .toolbar-actions { flex-wrap: wrap; }
-  .alphabet { flex-wrap: wrap; overflow-x: visible; }
+  .toolbar-filters { flex-wrap: wrap; }
 }

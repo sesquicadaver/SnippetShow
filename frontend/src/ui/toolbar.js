@@ -3,6 +3,32 @@ import uk from '../i18n/uk.js';
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 /**
+ * Options for the alphabet letter filter select (SS-36d).
+ * @returns {Array<{value:string,label:string}>}
+ */
+export function letterFilterOptions() {
+  return [
+    { value: 'all', label: uk.alphabetAll },
+    ...LETTERS.map((L) => ({ value: L, label: L })),
+    { value: '0-9', label: uk.alphabetDigits },
+  ];
+}
+
+/**
+ * Normalize toolbar letter state for the select value (SS-36d).
+ * @param {string|null|undefined} letter
+ * @returns {string}
+ */
+export function normalizeLetterValue(letter) {
+  const raw = String(letter ?? 'all').trim();
+  if (!raw || raw === 'all') return 'all';
+  if (raw === '0-9') return '0-9';
+  const upper = raw.toUpperCase();
+  if (LETTERS.includes(upper)) return upper;
+  return 'all';
+}
+
+/**
  * SS-30: do not overwrite the live search field while the user is typing.
  * @param {boolean} inputFocused
  * @param {string} currentValue
@@ -15,10 +41,9 @@ export function shouldSyncSearchValue(inputFocused, currentValue, nextQuery) {
 }
 
 /**
- * Builds / updates the Wiki toolbar: mode radios, search, alphabet, update controls.
+ * Builds / updates the Wiki toolbar: mode radios, search, letter select, update controls.
  * First call mounts DOM; later calls patch in place so the search input keeps focus (SS-30).
- * Layout densify (SS-36a) is CSS-only: dual-row grid-template-areas on `.toolbar`
- * (brand|modes|search|filters|actions / alphabet|status + thin progress hairline).
+ * Brand shows product name only (no subtitle). Alphabet is a compact `<select>` (SS-36d).
  * @param {HTMLElement} host
  * @param {{
  *   mode: string,
@@ -55,11 +80,14 @@ export function renderToolbar(host, state) {
 }
 
 function mountToolbar(host) {
+  const letterOpts = letterFilterOptions()
+    .map((o) => `<option value="${esc(o.value)}">${esc(o.label)}</option>`)
+    .join('');
+
   host.innerHTML = `
     <div class="toolbar" role="toolbar" aria-label="Керування Wiki">
       <div class="toolbar-brand">
         <span class="toolbar-brand-name">${esc(uk.brand)}</span>
-        <span class="toolbar-brand-sub">${esc(uk.subtitle)}</span>
       </div>
       <div class="toolbar-modes" role="radiogroup" aria-label="Режим списку">
         <label class="mode" data-mode="installed">
@@ -85,6 +113,9 @@ function mountToolbar(host) {
           <input type="checkbox" class="noman-input"/>
           ${esc(uk.filterNoMan)}
         </label>
+        <select class="letter-select" aria-label="${esc(uk.alphabetFilter || 'Літера')}">
+          ${letterOpts}
+        </select>
       </div>
       <div class="toolbar-actions">
         <button type="button" class="btn btn-primary" data-action="update"></button>
@@ -106,13 +137,6 @@ function mountToolbar(host) {
         </div>
         <span class="status-text"></span>
       </div>
-      <div class="alphabet" role="group" aria-label="Алфавітний фільтр">
-        <button type="button" class="alpha" data-letter="all">${esc(uk.alphabetAll)}</button>
-        ${LETTERS.map((L) => `
-          <button type="button" class="alpha" data-letter="${L}">${L}</button>
-        `).join('')}
-        <button type="button" class="alpha" data-letter="0-9">${esc(uk.alphabetDigits)}</button>
-      </div>
     </div>
   `;
 }
@@ -129,6 +153,9 @@ function bindToolbarEvents(host) {
   host.querySelector('.noman-input')?.addEventListener('change', (e) => {
     host._toolbarState?.onNoMan?.(!!e.target.checked);
   });
+  host.querySelector('.letter-select')?.addEventListener('change', (e) => {
+    host._toolbarState?.onLetter?.(e.target.value);
+  });
   host.querySelector('[data-action="update"]').addEventListener('click', () => {
     host._toolbarState?.onUpdate?.();
   });
@@ -143,11 +170,6 @@ function bindToolbarEvents(host) {
   });
   host.querySelector('[data-action="import-backup"]').addEventListener('click', () => {
     host._toolbarState?.onImportBackup?.();
-  });
-  host.querySelectorAll('[data-letter]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      host._toolbarState?.onLetter?.(btn.getAttribute('data-letter'));
-    });
   });
 }
 
@@ -190,6 +212,11 @@ function patchToolbar(host, state) {
     noMan.closest('.noman-filter').hidden = state.mode === 'all';
   }
 
+  const letterSel = host.querySelector('.letter-select');
+  if (letterSel && document.activeElement !== letterSel) {
+    letterSel.value = normalizeLetterValue(state.letter);
+  }
+
   const updateBtn = host.querySelector('[data-action="update"]');
   if (updateBtn) {
     updateBtn.disabled = !!state.busy;
@@ -211,14 +238,6 @@ function patchToolbar(host, state) {
 
   const status = host.querySelector('.status-text');
   if (status) status.textContent = state.status || uk.statusIdle;
-
-  host.querySelectorAll('[data-letter]').forEach((btn) => {
-    const letter = btn.getAttribute('data-letter');
-    const active = letter === 'all' || letter === '0-9'
-      ? state.letter === letter
-      : state.letter.toUpperCase() === letter;
-    btn.classList.toggle('is-active', active);
-  });
 }
 
 function esc(value) {
