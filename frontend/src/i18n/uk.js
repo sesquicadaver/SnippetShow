@@ -44,8 +44,6 @@ export const uk = {
   toastScriptRemoved: 'Прибрано зі скрипту ({n})',
 
   colName: 'Назва',
-  colSummary: 'Короткий опис',
-  colStatus: 'Статус',
   statusInstalled: 'Встановлено',
   statusNotInstalled: 'Не встановлено',
   emptyList: 'Немає програм за цим фільтром.',
@@ -54,6 +52,8 @@ export const uk = {
   countPackages: '{n} пакетів',
 
   wikiTitle: 'Офіційні команди (man)',
+  wikiDescription: 'Опис',
+  wikiDescPending: 'Опис з’явиться після збагачення метаданих.',
   wikiFilterPlaceholder: 'Фільтр прапорців…',
   wikiEmpty: 'Оберіть програму зі списку ліворуч.',
   wikiNoFlags: 'Прапорців не знайдено. Перегляньте Raw Man.',
