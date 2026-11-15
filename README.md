@@ -63,6 +63,8 @@ wails dev
 # артефакт: build/bin/SnippetShow
 ```
 
+Артефакти збірки **не комітяться**: `build/bin/`, `frontend/dist/` (окрім `.gitkeep`), `frontend/wailsjs/` (генерує Wails), `*.AppImage`, coverage, smoke-логи — див. `.gitignore`.
+
 ## Ubuntu dist smoke (v0.1 / D12)
 
 ```bash
