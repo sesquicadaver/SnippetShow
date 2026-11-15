@@ -66,6 +66,8 @@
 | SS-30 | Паузи/втрата фокусу в пошуку; повільний ввід у BASH editor | **done** — incremental toolbar/builder; soft list reload; rAF highlight; `ui_input_lag_test.mjs` |
 | SS-31 | Модель «Обрані» + man-gate (+ категорії / без man) | **done** — D13.1–D13.11 у `DECISIONS`; сирі Section; category у фоні; фільтр «Без man» |
 | SS-32 | Імплементація Обрані / man-gate / Section / «Без man» | **done** — schema v3; names-only FirstRun; SetFavorite; bulk enrich; UI режими+фільтри |
+| SS-33 | Відсутній чекбокс «Обрати» після #28 | **done** (розслідування) — був лише ★; див. store `favorites-checkbox-missing.md` |
+| SS-34 | Явний контроль «Обрати» / «В обраному» у списку | **done** — checkbox+підпис + колонка «Обране»; SetFavorite без змін |
 
 ## Відомі обмеження Core / Wiki / Builder
 
