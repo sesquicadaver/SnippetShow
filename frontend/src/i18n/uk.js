@@ -40,6 +40,7 @@ export const uk = {
   statusParsing: 'Парсинг man…',
   statusParseWarning: 'Man не розпарсено: {msg}',
   statusLoadingList: 'Завантаження списку…',
+  statusEnriching: 'Збагачення метаданих…',
   toastScriptRemoved: 'Прибрано зі скрипту ({n})',
 
   colName: 'Назва',

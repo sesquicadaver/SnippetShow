@@ -233,7 +233,8 @@ function patchToolbar(host, state) {
 
   const track = host.querySelector('.progress-track');
   const bar = host.querySelector('.progress-bar');
-  if (track) track.hidden = !state.busy;
+  // Show hairline during names-pass busy or background enrich progress (SS-36b).
+  if (track) track.hidden = !(state.busy || state.progress);
   if (bar) bar.style.width = `${pct}%`;
 
   const status = host.querySelector('.status-text');

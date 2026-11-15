@@ -57,6 +57,7 @@
 | FIX-SS-35 | Артефакти збірки не в git | untrack wailsjs + md5; ignore AppImage/coverage/.wails |
 | FIX-SS-36a | Toolbar densify (≤2 смуги) | dual-row CSS areas; compact alphabet; thin progress |
 | FIX-SS-36d | Без subtitle; літера = select | brand name only; letter dropdown replaces A–Z strip |
+| FIX-SS-36b | UpdateIndex names-first | names batch + background EnrichMetadata (D13.9) |
 
 ## Backlog (після v0.1 / відкладено)
 

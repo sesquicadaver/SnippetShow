@@ -221,6 +221,7 @@ func (a *API) runEnrichBackground() {
 		return
 	}
 	defer a.endLongOp()
+	a.emit(ProgressEvent{Phase: "enrich", Message: "Збагачення метаданих (Section / man)"})
 	progress := make(chan index.Progress, 32)
 	done := make(chan struct{})
 	go func() {
@@ -301,16 +302,17 @@ func isCancelErr(err error) bool {
 	return err != nil && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded))
 }
 
-// UpdateIndex performs incremental index refresh with progress events (P1-15/P2-7).
+// UpdateIndex performs a fast PATH names-only refresh (SS-36b / P1-15 / P2-7).
+// After names land, EnrichMetadata runs in the background (D13.9) so the UI can
+// reload the list without waiting for Section / man-presence enrich.
 func (a *API) UpdateIndex() (index.UpdateResult, error) {
 	if err := a.ensure(); err != nil {
 		return index.UpdateResult{}, err
 	}
-	ctx, err := a.beginLongOp(5 * time.Minute)
+	ctx, err := a.beginLongOp(2 * time.Minute)
 	if err != nil {
 		return index.UpdateResult{}, err
 	}
-	defer a.endLongOp()
 
 	progress := make(chan index.Progress, 32)
 	done := make(chan struct{})
@@ -324,6 +326,8 @@ func (a *API) UpdateIndex() (index.UpdateResult, error) {
 	res, err := a.updater.UpdateIndexWithProgress(ctx, progress)
 	close(progress)
 	<-done
+	a.endLongOp()
+
 	if isCancelErr(err) || isCancelErr(ctx.Err()) {
 		a.emit(ProgressEvent{Phase: "cancelled", Message: "Скасовано"})
 		return res, fmt.Errorf("скасовано")
@@ -335,6 +339,8 @@ func (a *API) UpdateIndex() (index.UpdateResult, error) {
 		Phase:   "done",
 		Message: fmt.Sprintf("Оновлено %d пакетів", res.Added+res.Updated+res.MarkedGone),
 	})
+	// Background Section / man enrich — does not block list paint (SS-36b).
+	go a.runEnrichBackground()
 	return res, nil
 }
 

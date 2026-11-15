@@ -82,6 +82,7 @@ class WikiApp {
     this.savedScripts = [];
     this.savedScriptId = 0;
     this._searchTimer = null;
+    this._enrichReloadTimer = null;
     this._unsubProgress = null;
     this._reqList = 0;
     this._reqDetail = 0;
@@ -92,7 +93,16 @@ class WikiApp {
     this._unsubProgress = onIndexProgress((p) => {
       this.progress = p || null;
       if (p?.message) this.status = p.message;
+      // Soft busy only for names-pass (UpdateIndex); enrich is background (SS-36b).
+      if (p?.phase === 'enrich' && !this.busy) {
+        this.progress = p;
+      }
       this.paintToolbar();
+      // After background enrich finishes, refresh Section / «Без man» filters.
+      if (p?.phase === 'done' && !this.busy) {
+        clearTimeout(this._enrichReloadTimer);
+        this._enrichReloadTimer = setTimeout(() => this.reloadList(), 120);
+      }
     });
     this.paintAll();
     this.refreshDraft();
@@ -106,16 +116,17 @@ class WikiApp {
       this.paintToolbar();
       return;
     }
-    this.busy = true;
+    // Soft paint (SS-36b): do not lock the whole toolbar as «Оновлення…» on EnsureIndexed.
+    this.listLoading = shouldShowListLoading(this.programs?.length || 0);
     this.status = uk.statusLoadingList;
     this.paintToolbar();
+    this.paintNavigator();
     try {
       await AppAPI.EnsureIndexed();
     } catch (err) {
       console.error(err);
       this.status = `${uk.statusError}: ${err?.message || err}`;
     }
-    this.busy = false;
     await this.reloadList();
   }
 

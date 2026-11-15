@@ -188,6 +188,53 @@ func TestCustomScriptsCRUD(t *testing.T) {
 	}
 }
 
+func TestUpsertInstalledNamesBatch(t *testing.T) {
+	s := openTemp(t)
+	const n = 600
+	names := make([]string, 0, n)
+	for i := 0; i < n; i++ {
+		names = append(names, "bin"+pad4(i))
+	}
+	base := s.FTSSyncCount.Load()
+	chunks := 0
+	added, updated, err := s.UpsertInstalledNamesBatch(names, 250, func(done, total int) {
+		chunks++
+		if done != 250 && done != 500 && done != total {
+			t.Fatalf("progress done=%d total=%d", done, total)
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if added != n || updated != 0 {
+		t.Fatalf("added=%d updated=%d", added, updated)
+	}
+	if chunks != 3 {
+		t.Fatalf("chunks=%d", chunks)
+	}
+	// program FTS + package FTS per new name
+	ftsDelta := s.FTSSyncCount.Load() - base
+	if ftsDelta != int64(n*2) {
+		t.Fatalf("FTS syncs=%d want %d", ftsDelta, n*2)
+	}
+	// Second pass: already installed → no new FTS.
+	base2 := s.FTSSyncCount.Load()
+	added2, updated2, err := s.UpsertInstalledNamesBatch(names, 250, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if added2 != 0 || updated2 != 0 {
+		t.Fatalf("noop pass added=%d updated=%d", added2, updated2)
+	}
+	if s.FTSSyncCount.Load()-base2 != 0 {
+		t.Fatalf("noop pass must skip FTS")
+	}
+	p, err := s.GetProgramByName("bin0000")
+	if err != nil || !p.IsInstalled {
+		t.Fatalf("%+v err=%v", p, err)
+	}
+}
+
 func TestUpsertPackagesBatchFTS(t *testing.T) {
 	s := openTemp(t)
 	_, err := s.UpsertProgram(Program{Name: "pkg0005", Summary: "installed", Version: "1", IsInstalled: true}, false)

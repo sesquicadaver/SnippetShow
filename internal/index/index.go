@@ -60,18 +60,11 @@ func (u *Updater) UpdateIndex(ctx context.Context) (UpdateResult, error) {
 	return u.UpdateIndexWithProgress(ctx, nil)
 }
 
-// UpdateIndexWithProgress is UpdateIndex with optional progress callbacks.
-// After the names pass it runs bulk metadata enrich (D13.9); favorite man reparse
-// happens inside EnrichMetadata on version change (D13.7).
+// UpdateIndexWithProgress runs the PATH names-only pass (SS-36b / D13.1).
+// Section / man-presence enrich is intentionally NOT done here — the App API
+// kicks EnrichMetadata in the background after the UI can reload the list (D13.9).
 func (u *Updater) UpdateIndexWithProgress(ctx context.Context, progress chan<- Progress) (UpdateResult, error) {
-	res, err := u.syncInstalled(ctx, false, progress)
-	if err != nil {
-		return res, err
-	}
-	if err := u.EnrichMetadata(ctx, progress); err != nil {
-		return res, err
-	}
-	return res, nil
+	return u.syncInstalled(ctx, false, progress)
 }
 
 func (u *Updater) syncInstalled(ctx context.Context, parseFavorites bool, progress chan<- Progress) (UpdateResult, error) {
@@ -93,56 +86,43 @@ func (u *Updater) syncInstalled(ctx context.Context, parseFavorites bool, progre
 	if err != nil {
 		return UpdateResult{}, err
 	}
-	res := UpdateResult{InstalledSeen: len(names)}
-	keep := make([]string, 0, len(names))
-	var toParse []string
-
-	for i, name := range names {
-		keep = append(keep, name)
-		existing, err := u.Store.GetProgramByName(name)
-		resetMan := false
-		isNew := false
-		wasFavorite := false
-		if err != nil {
-			isNew = true
-		} else {
-			wasFavorite = existing.IsFavorite
-			if existing.Version != "" {
-				// Version compare happens after background enrich; here we only upsert presence.
-			}
-			if !existing.IsInstalled {
-				res.Updated++
-			}
-		}
-
-		_, err = u.Store.UpsertProgram(db.Program{
-			Name:        name,
-			IsInstalled: true,
-			ManStatus:   db.ManStatusUnknown,
-		}, resetMan)
-		if err != nil {
-			return res, err
-		}
-		if isNew {
-			res.Added++
-		}
-		if parseFavorites && wasFavorite && resetMan {
-			toParse = append(toParse, name)
-		}
-		send(Progress{Phase: "upsert", Done: i + 1, Total: len(names), Message: name})
+	select {
+	case <-ctx.Done():
+		return UpdateResult{}, ctx.Err()
+	default:
 	}
 
-	n, err := u.Store.MarkNotInstalledExcept(keep)
+	res := UpdateResult{InstalledSeen: len(names)}
+	added, updated, err := u.Store.UpsertInstalledNamesBatch(names, db.DefaultInstalledChunkSize, func(done, total int) {
+		send(Progress{Phase: "upsert", Done: done, Total: total, Message: fmt.Sprintf("%d / %d", done, total)})
+	})
+	if err != nil {
+		return res, err
+	}
+	res.Added = added
+	res.Updated = updated
+
+	n, err := u.Store.MarkNotInstalledExcept(names)
 	if err != nil {
 		return res, err
 	}
 	res.MarkedGone = int(n)
 
-	if parseFavorites && len(toParse) > 0 {
-		parsed, err := u.parseMany(ctx, toParse, send)
-		res.Parsed = parsed
-		if err != nil {
-			return res, err
+	// Legacy path: optional favorite reparse during sync (unused by FirstRun/UpdateIndex).
+	if parseFavorites {
+		var toParse []string
+		for _, name := range names {
+			existing, gerr := u.Store.GetProgramByName(name)
+			if gerr == nil && existing.IsFavorite && existing.ManStatus != db.ManStatusParsed {
+				toParse = append(toParse, name)
+			}
+		}
+		if len(toParse) > 0 {
+			parsed, perr := u.parseMany(ctx, toParse, send)
+			res.Parsed = parsed
+			if perr != nil {
+				return res, perr
+			}
 		}
 	}
 	send(Progress{Phase: "done", Message: fmt.Sprintf("Оновлено %d пакетів", res.Added+res.Updated+res.MarkedGone)})
