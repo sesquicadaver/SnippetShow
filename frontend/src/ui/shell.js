@@ -23,6 +23,21 @@ export function shouldShowListLoading(programCount, opts = {}) {
 }
 
 /**
+ * SS-52: after names-first EnsureIndexed, queue Section enrich not only when rows
+ * were just added — warm DBs with blank programs.category also need EnrichMetadata
+ * so the Section filter can leave the static «Усі секції» option.
+ * @param {number} added
+ * @param {string[]|null|undefined} categories
+ * @param {number} [programCount]
+ * @returns {boolean}
+ */
+export function shouldQueueBootstrapEnrich(added, categories, programCount = 0) {
+  if (added > 0) return true;
+  if (programCount > 0 && !(categories?.length > 0)) return true;
+  return false;
+}
+
+/**
  * Phase 4 Wiki shell: toolbar + navigator + center + Script Builder + backup.
  * @param {HTMLElement} root
  * @param {{ name?: string, subtitle?: string, phase?: string }} info
@@ -127,7 +142,10 @@ class WikiApp {
     }
     // Names are in DB — paint list before Section enrich (SS-40).
     await this.reloadList({ keepVisible: added > 0 });
-    if (added > 0) this.queueEnrich();
+    // reloadList awaits refreshCategories; warm names-only index → queue enrich (SS-52).
+    if (shouldQueueBootstrapEnrich(added, this.categories, this.programs?.length || 0)) {
+      this.queueEnrich();
+    }
   }
 
   paintAll() {
@@ -332,7 +350,7 @@ class WikiApp {
     this.listLoading = false;
     this.paintToolbar();
     this.paintNavigator();
-    this.refreshCategories();
+    await this.refreshCategories();
   }
 
   /**
