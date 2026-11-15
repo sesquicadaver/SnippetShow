@@ -116,7 +116,7 @@ function openBuilderBodyHTML() {
       <button type="button" class="btn" data-action="script-copy">${esc(uk.builderCopy)}</button>
       <button type="button" class="btn" data-action="script-run">${esc(uk.builderRun)}</button>
       <button type="button" class="btn" data-action="script-export">${esc(uk.builderExport)}</button>
-      <button type="button" class="btn btn-accent" data-action="script-save">${esc(uk.builderSave)}</button>
+      <button type="button" class="btn btn-primary" data-action="script-save">${esc(uk.builderSave)}</button>
       <button type="button" class="btn" data-action="script-clear">${esc(uk.builderClear)}</button>
     </div>
     <div class="builder-saved">
