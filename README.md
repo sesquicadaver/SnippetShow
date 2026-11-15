@@ -73,8 +73,6 @@ wails dev
 # → build/bin/SnippetShow
 ```
 
-Артефакти збірки **не в git**: `build/bin/`, `frontend/dist/` (окрім `.gitkeep`), `frontend/wailsjs/`, `*.AppImage`, coverage, smoke-логи — див. `.gitignore`. Каталоги `build/windows` / `build/darwin` навмисно відсутні.
-
 ## Запуск
 
 ```bash
