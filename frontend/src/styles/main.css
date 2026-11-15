@@ -144,17 +144,15 @@ html, body {
   max-width: 24rem;
 }
 
-/* Shared chrome for search / selects / buttons in the toolbar (SS-40 / SS-43). */
+/* Shared chrome for search / custom selects / buttons in the toolbar (SS-40 / SS-45). */
 .toolbar .search-input,
-.toolbar-filters .category-select,
-.toolbar-filters .letter-select,
+.toolbar-filters .toolbar-select-trigger,
 .toolbar .btn {
   box-sizing: border-box;
   height: 2rem;
   margin: 0;
   border: 1px solid var(--line);
   border-radius: 0;
-  /* background-color (not shorthand) so select chevron background-image survives. */
   background-color: var(--bg-elev);
   color: var(--ink);
   font: inherit;
@@ -163,10 +161,23 @@ html, body {
   transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
 }
 
-.toolbar .search-input,
-.toolbar-filters .category-select,
-.toolbar-filters .letter-select {
+.toolbar .search-input {
   padding: 0 0.55rem;
+}
+
+/*
+ * SS-45: native <select> stays system-white under WebKitGTK even with SS-43 CSS.
+ * Custom button+listbox uses the same tokens as search/buttons (no GTK menulist).
+ */
+.toolbar-filters .toolbar-select {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.toolbar-filters .toolbar-select[hidden] {
+  display: none;
 }
 
 .toolbar-filters .category-select {
@@ -179,42 +190,70 @@ html, body {
   min-width: 4.5rem;
 }
 
-/*
- * SS-43: WebKit/GTK paints native <select> with a bright system face even when
- * background/color are set. Match search/button chrome via appearance:none +
- * solid bg + custom chevron; keep option list on dark tokens.
- */
-.toolbar-filters .category-select,
-.toolbar-filters .letter-select {
-  -webkit-appearance: none;
-  appearance: none;
-  color-scheme: dark;
-  background-color: var(--bg-elev);
+.toolbar-filters .toolbar-select-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0 1.45rem 0 0.55rem;
+  cursor: pointer;
+  text-align: left;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%239aab96' d='M1 1.5L6 6.5L11 1.5'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.45rem center;
   background-size: 0.7rem 0.45rem;
-  padding-right: 1.45rem;
-  color: var(--ink);
-  cursor: pointer;
 }
 
-.toolbar-filters .category-select option,
-.toolbar-filters .letter-select option {
-  background-color: var(--bg-elev);
+.toolbar-filters .toolbar-select-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.toolbar-filters .toolbar-select-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  min-width: 100%;
+  max-height: min(16rem, 50vh);
+  margin: 0;
+  padding: 0.2rem 0;
+  list-style: none;
+  overflow: auto;
+  border: 1px solid var(--line);
+  background: var(--bg-elev);
+  color: var(--ink);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+}
+
+.toolbar-filters .toolbar-select-option {
+  margin: 0;
+  padding: 0.35rem 0.55rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toolbar-filters .toolbar-select-option:hover,
+.toolbar-filters .toolbar-select-option.is-selected {
+  background: var(--row-selected);
   color: var(--ink);
 }
 
 .toolbar .search-input:focus,
-.toolbar-filters .category-select:focus,
-.toolbar-filters .letter-select:focus,
+.toolbar-filters .toolbar-select-trigger:focus-visible,
 .toolbar .btn:focus-visible {
   outline: 2px solid rgba(196, 163, 90, 0.45);
   outline-offset: 1px;
 }
 
-.toolbar-filters .category-select:hover,
-.toolbar-filters .letter-select:hover,
+.toolbar-filters .toolbar-select-trigger:hover,
 .toolbar .btn:hover:not(:disabled) {
   border-color: rgba(196, 163, 90, 0.5);
 }
