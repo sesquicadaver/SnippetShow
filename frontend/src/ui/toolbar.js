@@ -41,9 +41,73 @@ export function shouldSyncSearchValue(inputFocused, currentValue, nextQuery) {
 }
 
 /**
+ * SS-45: markup for a CSS-themed toolbar dropdown (replaces native <select>).
+ * @param {string} className
+ * @param {string} ariaLabel
+ * @returns {string}
+ */
+export function toolbarSelectMarkup(className, ariaLabel) {
+  return `
+    <div class="toolbar-select ${esc(className)}" data-toolbar-select>
+      <button type="button" class="toolbar-select-trigger" aria-haspopup="listbox"
+        aria-expanded="false" aria-label="${esc(ariaLabel)}">
+        <span class="toolbar-select-label"></span>
+      </button>
+      <ul class="toolbar-select-menu" role="listbox" hidden></ul>
+    </div>
+  `;
+}
+
+/**
+ * Resolve label for a value from option list.
+ * @param {Array<{value:string,label:string}>} options
+ * @param {string} value
+ * @returns {string}
+ */
+export function toolbarSelectLabel(options, value) {
+  const hit = (options || []).find((o) => o.value === value);
+  return hit ? hit.label : String(value ?? '');
+}
+
+/**
+ * Rebuild options + current label for a custom toolbar select (SS-45).
+ * @param {HTMLElement|null} root
+ * @param {{options:Array<{value:string,label:string}>, value:string, hidden?: boolean}} state
+ */
+export function patchToolbarSelect(root, state) {
+  if (!root) return;
+  const options = state.options || [];
+  const value = String(state.value ?? '');
+  root.hidden = !!state.hidden;
+  root.dataset.value = value;
+  const label = root.querySelector('.toolbar-select-label');
+  if (label) label.textContent = toolbarSelectLabel(options, value) || '—';
+  const menu = root.querySelector('.toolbar-select-menu');
+  if (!menu) return;
+  menu.innerHTML = options.map((o) => `
+    <li role="option" class="toolbar-select-option${o.value === value ? ' is-selected' : ''}"
+      data-value="${esc(o.value)}" aria-selected="${o.value === value ? 'true' : 'false'}">${esc(o.label)}</li>
+  `).join('');
+}
+
+/**
+ * Close all open toolbar selects under host.
+ * @param {HTMLElement} host
+ */
+export function closeToolbarSelects(host) {
+  host.querySelectorAll('[data-toolbar-select].is-open').forEach((el) => {
+    el.classList.remove('is-open');
+    const trigger = el.querySelector('.toolbar-select-trigger');
+    const menu = el.querySelector('.toolbar-select-menu');
+    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    if (menu) menu.hidden = true;
+  });
+}
+
+/**
  * Builds / updates the Wiki toolbar: mode radios, search, letter select, update controls.
  * First call mounts DOM; later calls patch in place so the search input keeps focus (SS-30).
- * Brand = SnippetShow only (no subtitle). Letter filter = compact `<select>` (SS-36d).
+ * Brand = SnippetShow only (no subtitle). Letter filter = compact dropdown (SS-36d / SS-45).
  * SS-40 restores a single coherent composition (segmented modes, no wrap sprawl).
  * @param {HTMLElement} host
  * @param {{
@@ -81,10 +145,6 @@ export function renderToolbar(host, state) {
 }
 
 function mountToolbar(host) {
-  const letterOpts = letterFilterOptions()
-    .map((o) => `<option value="${esc(o.value)}">${esc(o.label)}</option>`)
-    .join('');
-
   host.innerHTML = `
     <div class="toolbar" role="toolbar" aria-label="Керування Wiki">
       <div class="toolbar-brand">
@@ -109,14 +169,12 @@ function mountToolbar(host) {
           value="" autocomplete="off" spellcheck="false"/>
       </div>
       <div class="toolbar-filters">
-        <select class="category-select" aria-label="${esc(uk.filterCategoryAll)}"></select>
+        ${toolbarSelectMarkup('category-select', uk.filterCategoryAll)}
         <label class="noman-filter">
           <input type="checkbox" class="noman-input"/>
           ${esc(uk.filterNoMan)}
         </label>
-        <select class="letter-select" aria-label="${esc(uk.alphabetFilter || 'Літера')}">
-          ${letterOpts}
-        </select>
+        ${toolbarSelectMarkup('letter-select', uk.alphabetFilter || 'Літера')}
       </div>
       <div class="toolbar-actions">
         <button type="button" class="btn btn-primary" data-action="update"></button>
@@ -148,15 +206,33 @@ function bindToolbarEvents(host) {
   });
   const search = host.querySelector('.search-input');
   search.addEventListener('input', () => host._toolbarState?.onQuery?.(search.value));
-  host.querySelector('.category-select')?.addEventListener('change', (e) => {
-    host._toolbarState?.onCategory?.(e.target.value);
-  });
   host.querySelector('.noman-input')?.addEventListener('change', (e) => {
     host._toolbarState?.onNoMan?.(!!e.target.checked);
   });
-  host.querySelector('.letter-select')?.addEventListener('change', (e) => {
-    host._toolbarState?.onLetter?.(e.target.value);
+
+  bindToolbarSelect(host, host.querySelector('.category-select'), (value) => {
+    host._toolbarState?.onCategory?.(value);
   });
+  bindToolbarSelect(host, host.querySelector('.letter-select'), (value) => {
+    host._toolbarState?.onLetter?.(value);
+  });
+
+  host.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeToolbarSelects(host);
+  });
+  // Capture outside clicks once (SS-45 custom menus).
+  if (!host._toolbarOutsideBound) {
+    host._toolbarOutsideBound = true;
+    document.addEventListener('mousedown', (e) => {
+      if (!host.isConnected) return;
+      if (e.target instanceof Node && host.contains(e.target)
+        && e.target.closest?.('[data-toolbar-select]')) {
+        return;
+      }
+      closeToolbarSelects(host);
+    });
+  }
+
   host.querySelector('[data-action="update"]').addEventListener('click', () => {
     host._toolbarState?.onUpdate?.();
   });
@@ -171,6 +247,38 @@ function bindToolbarEvents(host) {
   });
   host.querySelector('[data-action="import-backup"]').addEventListener('click', () => {
     host._toolbarState?.onImportBackup?.();
+  });
+}
+
+/**
+ * @param {HTMLElement} host
+ * @param {HTMLElement|null} root
+ * @param {(value:string)=>void} onChange
+ */
+function bindToolbarSelect(host, root, onChange) {
+  if (!root) return;
+  const trigger = root.querySelector('.toolbar-select-trigger');
+  const menu = root.querySelector('.toolbar-select-menu');
+  if (!trigger || !menu) return;
+
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = !root.classList.contains('is-open');
+    closeToolbarSelects(host);
+    if (open) {
+      root.classList.add('is-open');
+      trigger.setAttribute('aria-expanded', 'true');
+      menu.hidden = false;
+    }
+  });
+
+  menu.addEventListener('click', (e) => {
+    const opt = e.target.closest?.('[data-value]');
+    if (!opt || !menu.contains(opt)) return;
+    const value = opt.getAttribute('data-value') || '';
+    root.dataset.value = value;
+    closeToolbarSelects(host);
+    onChange?.(value);
   });
 }
 
@@ -197,25 +305,29 @@ function patchToolbar(host, state) {
     search.value = state.query || '';
   }
 
-  const catSel = host.querySelector('.category-select');
-  if (catSel) {
-    const cats = state.categories || [];
-    const cur = state.category || '';
-    const opts = [`<option value="">${esc(uk.filterCategoryAll)}</option>`]
-      .concat(cats.map((c) => `<option value="${esc(c)}" ${c === cur ? 'selected' : ''}>${esc(c)}</option>`));
-    catSel.innerHTML = opts.join('');
-    catSel.value = cur;
-    catSel.hidden = state.mode === 'all';
-  }
+  const cats = state.categories || [];
+  const curCat = state.category || '';
+  patchToolbarSelect(host.querySelector('.category-select'), {
+    options: [{ value: '', label: uk.filterCategoryAll }]
+      .concat(cats.map((c) => ({ value: c, label: c }))),
+    value: curCat,
+    hidden: state.mode === 'all',
+  });
+
   const noMan = host.querySelector('.noman-input');
   if (noMan) {
     noMan.checked = !!state.noMan;
     noMan.closest('.noman-filter').hidden = state.mode === 'all';
   }
 
-  const letterSel = host.querySelector('.letter-select');
-  if (letterSel && document.activeElement !== letterSel) {
-    letterSel.value = normalizeLetterValue(state.letter);
+  const letterVal = normalizeLetterValue(state.letter);
+  const letterRoot = host.querySelector('.letter-select');
+  // Avoid clobbering an open menu mid-interaction.
+  if (!(letterRoot?.classList.contains('is-open'))) {
+    patchToolbarSelect(letterRoot, {
+      options: letterFilterOptions(),
+      value: letterVal,
+    });
   }
 
   const updateBtn = host.querySelector('[data-action="update"]');
