@@ -1,6 +1,7 @@
 import uk from '../i18n/uk.js';
 
-const ROW_H = 40;
+/** SS-41: name-only rows are shorter without summary/status columns. */
+const ROW_H = 36;
 const OVERSCAN = 12;
 
 /**
@@ -70,8 +71,6 @@ export function renderNavigator(host, state) {
         <div class="nav-table-head" aria-hidden="true">
           <span class="nav-col-fav">${esc(uk.colFavorite || uk.favoriteAdd)}</span>
           <span>${esc(uk.colName)}</span>
-          <span>${esc(uk.colSummary)}</span>
-          <span>${esc(uk.colStatus)}</span>
         </div>
         <div class="nav-scroll" tabindex="0">
           <div class="nav-spacer"></div>
@@ -111,20 +110,6 @@ export function renderNavigator(host, state) {
   paintWindow(host);
 }
 
-function statusLabel(p) {
-  if (p.kind === 'package') {
-    return p.isInstalled
-      ? `${uk.statusKindPackage || 'Пакет'} · ${uk.statusInstalled}`
-      : `${uk.statusKindPackage || 'Пакет'} · ${uk.statusNotInstalled}`;
-  }
-  const bits = [];
-  if (p.isFavorite) bits.push(uk.modeFavorites || 'Обрані');
-  if (p.manStatus === 'absent') bits.push(uk.filterNoMan || 'Без man');
-  if (p.category) bits.push(p.category);
-  bits.push(p.isInstalled ? uk.statusInstalled : uk.statusNotInstalled);
-  return bits.join(' · ');
-}
-
 function paintWindow(host) {
   const st = resolveNavState(host);
   if (!st) return;
@@ -157,10 +142,9 @@ function paintWindow(host) {
             <span class="nav-fav-text">${esc(favLabel)}</span>
           </label>
         ` : `<span class="nav-fav-spacer" aria-hidden="true"></span>`}
-        <button type="button" class="nav-row-main" data-name="${esc(p.name)}">
-          <span class="nav-name" title="${esc(p.name)}">${esc(p.name)}</span>
-          <span class="nav-summary" title="${esc(p.summary || '')}">${esc(p.summary || '—')}</span>
-          <span class="nav-status">${esc(statusLabel(p))}</span>
+        <button type="button" class="nav-row-main" data-name="${esc(p.name)}"
+          title="${esc(rowTitle(p))}">
+          <span class="nav-name">${esc(p.name)}</span>
         </button>
       </div>
     `);
@@ -181,6 +165,13 @@ function paintWindow(host) {
   win.querySelectorAll('.nav-fav-label').forEach((label) => {
     label.addEventListener('click', (e) => e.stopPropagation());
   });
+}
+
+/** Hover tooltip: name (+ summary when present). Summary lives in wiki (SS-41). */
+function rowTitle(p) {
+  const name = String(p?.name || '');
+  const summary = String(p?.summary || '').trim();
+  return summary ? `${name} — ${summary}` : name;
 }
 
 function fmt(template, vars) {

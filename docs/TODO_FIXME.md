@@ -73,6 +73,7 @@
 | SS-36d | Brand subtitle + alphabet strip | **done** — лише «SnippetShow»; літера = `<select>` (A–Z / 0–9) |
 | SS-36b | UpdateIndex names-first + enrich у фоні | **done** — batch upsert імен; EnrichMetadata background; soft bootstrap |
 | SS-40 | Список порожній / Loading під час індексу; toolbar sprawl | **done** — list paint before enrich; WAL reads; toolbar composition |
+| SS-41 | Навігатор: «Статус»/«Короткий опис» стискають NAME; опис дублює wiki | **done** — лише Обране+Назва; lead-опис у wiki (Favorites перед man) |
 
 ## Відомі обмеження Core / Wiki / Builder
 

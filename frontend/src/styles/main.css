@@ -353,7 +353,7 @@ html, body {
 
 .nav-table-head {
   display: grid;
-  grid-template-columns: 6.5rem 24% 1fr 28%;
+  grid-template-columns: 6.5rem 1fr;
   gap: 0.35rem;
   padding: 0.4rem 0.5rem 0.4rem 0.35rem;
   color: var(--muted);
@@ -402,11 +402,8 @@ html, body {
 }
 
 .nav-row-main {
-  display: grid;
-  grid-template-columns: 24% 1fr 28%;
-  gap: 0.35rem;
+  display: block;
   width: 100%;
-  align-items: center;
   min-width: 0;
   padding: 0;
   border: 0;
@@ -467,6 +464,7 @@ html, body {
 .nav-row.is-selected { background: var(--row-selected); }
 
 .nav-name {
+  display: block;
   font-family: var(--font-mono);
   font-size: 0.84rem;
   overflow: hidden;
@@ -474,17 +472,6 @@ html, body {
   white-space: nowrap;
 }
 
-.nav-summary,
-.nav-status {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--muted);
-  font-size: 0.82rem;
-}
-
-.nav-row.is-installed .nav-status { color: var(--ok); }
-.nav-row.is-missing .nav-status { color: var(--warn); }
 .nav-row.is-missing .nav-name { opacity: 0.85; }
 
 .nav-empty {
@@ -499,11 +486,12 @@ html, body {
 }
 
 .wiki-panel {
-  display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  display: flex;
+  flex-direction: column;
   height: 100%;
   padding: 0.85rem 1rem 1rem;
   gap: 0.65rem;
+  min-height: 0;
   animation: panel-in 220ms ease-out;
 }
 
@@ -532,6 +520,42 @@ html, body {
   color: var(--muted);
 }
 
+/* SS-41: lead description above man commands (Favorites / needsFavorite). */
+.wiki-desc {
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(20, 26, 20, 0.35);
+}
+
+.wiki-desc-label {
+  margin: 0 0 0.3rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.wiki-desc-text {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.wiki-desc-text.is-pending {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.wiki-desc-meta {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .wiki-tools {
   display: flex;
   gap: 0.45rem;
@@ -549,6 +573,10 @@ html, body {
   min-height: 0;
   border: 1px solid var(--line);
   background: rgba(20, 26, 20, 0.35);
+}
+
+.wiki-panel > .man-table-wrap {
+  flex: 1 1 auto;
 }
 
 .man-table {

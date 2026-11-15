@@ -32,8 +32,8 @@ export function renderWiki(host, state) {
       <section class="wiki-panel">
         <header class="wiki-header">
           <h2>${esc(p.name)}</h2>
-          <p class="wiki-sub">${esc(p.summary || '')}${p.category ? ` · ${esc(p.category)}` : ''}</p>
         </header>
+        ${renderDescriptionLead(p, { includeCategory: true })}
         <div class="install-block">
           <p>${esc(uk.needsFavoriteHint)}</p>
           <div class="row-actions">
@@ -90,12 +90,12 @@ export function renderWiki(host, state) {
       return `${c.flag} ${c.description}`.toLowerCase().includes(filter);
     });
 
+  // SS-41: description lead above official man commands (Favorites).
   host.innerHTML = `
     <section class="wiki-panel">
       <header class="wiki-header">
         <div>
           <h2>${esc(p.name)}</h2>
-          <p class="wiki-sub">${esc(p.summary || '')}${p.version ? ` · ${esc(p.version)}` : ''}</p>
         </div>
         <div class="wiki-tools">
           <input type="search" class="flag-filter" placeholder="${esc(uk.wikiFilterPlaceholder)}"
@@ -103,6 +103,7 @@ export function renderWiki(host, state) {
           <button type="button" class="btn" data-action="raw">${esc(uk.rawMan)}</button>
         </div>
       </header>
+      ${renderDescriptionLead(p, { includeVersion: true, includeCategory: true })}
       ${detail.parseWarning ? `<p class="form-error" role="status">${esc(fmt(uk.statusParseWarning, { msg: detail.parseWarning }))}</p>` : ''}
       <h3 class="wiki-section-title">${esc(uk.wikiTitle)}</h3>
       <div class="man-table-wrap">
@@ -141,6 +142,32 @@ export function renderWiki(host, state) {
   `;
 
   bindWikiEvents(host, state, detail);
+}
+
+/**
+ * SS-41: lead description block shown in wiki before man / favorite CTA.
+ * @param {{summary?: string, version?: string, category?: string}} p
+ * @param {{includeVersion?: boolean, includeCategory?: boolean}} [opts]
+ * @returns {string}
+ */
+export function renderDescriptionLead(p, opts = {}) {
+  const summary = String(p?.summary || '').trim();
+  const meta = [];
+  if (opts.includeVersion && p?.version) meta.push(String(p.version));
+  if (opts.includeCategory && p?.category) meta.push(String(p.category));
+  const text = summary
+    ? `<p class="wiki-desc-text">${esc(summary)}</p>`
+    : `<p class="wiki-desc-text is-pending">${esc(uk.wikiDescPending || '')}</p>`;
+  const metaHtml = meta.length
+    ? `<p class="wiki-desc-meta">${esc(meta.join(' · '))}</p>`
+    : '';
+  return `
+    <div class="wiki-desc">
+      <p class="wiki-desc-label">${esc(uk.wikiDescription || uk.installSummary)}</p>
+      ${text}
+      ${metaHtml}
+    </div>
+  `;
 }
 
 function renderSnippetsBlock(detail, state) {

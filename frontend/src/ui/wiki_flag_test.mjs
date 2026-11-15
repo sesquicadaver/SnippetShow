@@ -4,7 +4,13 @@
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { commandFromFlag, expandBraceOptions, normalizeManFlag, shellSafeProgram } from './wiki.js';
+import {
+  commandFromFlag,
+  expandBraceOptions,
+  normalizeManFlag,
+  renderDescriptionLead,
+  shellSafeProgram,
+} from './wiki.js';
 
 describe('shellSafeProgram (SS-25)', () => {
   it('maps [ and test to /usr/bin binaries', () => {
@@ -23,6 +29,25 @@ describe('commandFromFlag (SS-25)', () => {
   it('keeps ordinary programs unchanged', () => {
     assert.equal(commandFromFlag('2ping', '--adaptive'), '2ping --adaptive');
     assert.equal(normalizeManFlag('-a, --all'), '-a --all');
+  });
+});
+
+describe('renderDescriptionLead (SS-41)', () => {
+  it('renders summary before man section markup', () => {
+    const html = renderDescriptionLead(
+      { summary: 'network ping utility', version: '1.2', category: 'net' },
+      { includeVersion: true, includeCategory: true },
+    );
+    assert.match(html, /wiki-desc/);
+    assert.match(html, /network ping utility/);
+    assert.match(html, /1\.2/);
+    assert.match(html, /net/);
+  });
+
+  it('shows pending hint when summary is empty', () => {
+    const html = renderDescriptionLead({ summary: '' }, {});
+    assert.match(html, /is-pending/);
+    assert.match(html, /збагачення/);
   });
 });
 
