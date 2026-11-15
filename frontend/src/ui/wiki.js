@@ -82,8 +82,9 @@ export function renderWiki(host, state) {
 
   const filter = (state.flagFilter || '').trim().toLowerCase();
   const draftSet = new Set((state.draftLines || []).map((l) => String(l).trim()).filter(Boolean));
+  const sourceCommands = detail.commands || [];
   // SS-26: expand cached "-ao{a|s|t|u}" rows for Run/Copy without waiting for reparse.
-  const cmds = (detail.commands || [])
+  const cmds = sourceCommands
     .flatMap((c) => expandBraceOptions(c.flag, c.description))
     .filter((c) => {
       if (!filter) return true;
@@ -91,6 +92,7 @@ export function renderWiki(host, state) {
     });
 
   // SS-41: description lead above official man commands (Favorites).
+  // SS-44: always include synthetic base-command row (Copy/Run/+Script) above flags.
   host.innerHTML = `
     <section class="wiki-panel">
       <header class="wiki-header">
@@ -117,20 +119,10 @@ export function renderWiki(host, state) {
             </tr>
           </thead>
           <tbody>
-            ${cmds.length === 0 ? `
-              <tr><td colspan="4" class="muted">${esc(uk.wikiNoFlags)}</td></tr>
-            ` : cmds.map((c, idx) => {
-              const line = commandFromFlag(p.name, c.flag);
-              const checked = draftSet.has(line) ? 'checked' : '';
-              const key = c.id != null ? `man-${c.id}` : `man-brace-${idx}-${c.flag}`;
-              return `
-              <tr>
-                <td class="col-check"><input type="checkbox" data-action="check-script" data-cmd="${esc(line)}" ${checked} title="${esc(uk.actionScript)}"/></td>
-                <td class="flag"><code>${esc(c.flag)}</code></td>
-                <td>${esc(c.description)}</td>
-                <td class="actions">${actionButtons(line, key)}</td>
-              </tr>`;
-            }).join('')}
+            ${renderManTableBody(p.name, cmds, draftSet, {
+              sourceEmpty: sourceCommands.length === 0,
+              filterActive: !!filter,
+            })}
           </tbody>
         </table>
       </div>
@@ -142,6 +134,58 @@ export function renderWiki(host, state) {
   `;
 
   bindWikiEvents(host, state, detail);
+}
+
+/**
+ * SS-44: bare program invocation for Script Builder when man has no useful flags.
+ * @param {string} program
+ * @returns {string}
+ */
+export function bareCommandLine(program) {
+  return commandFromFlag(program, '');
+}
+
+/**
+ * Man tbody HTML: always lead with base-command row, then flag rows (deduped).
+ * @param {string} program
+ * @param {Array<{flag:string,description:string,id?:number}>} cmds
+ * @param {Set<string>} draftSet
+ * @param {{sourceEmpty?: boolean, filterActive?: boolean}} [opts]
+ * @returns {string}
+ */
+export function renderManTableBody(program, cmds, draftSet, opts = {}) {
+  const bare = bareCommandLine(program);
+  const checkedBare = draftSet.has(bare) ? 'checked' : '';
+  const bareRow = `
+              <tr class="man-bare-row" data-bare="1">
+                <td class="col-check"><input type="checkbox" data-action="check-script" data-cmd="${esc(bare)}" ${checkedBare} title="${esc(uk.actionScript)}"/></td>
+                <td class="flag"><code>${esc(bare)}</code></td>
+                <td>${esc(uk.wikiBareCommand || 'Базова команда')}</td>
+                <td class="actions">${actionButtons(bare, 'man-bare')}</td>
+              </tr>`;
+
+  const flagRows = (cmds || []).filter((c) => commandFromFlag(program, c.flag) !== bare);
+  const flagHtml = flagRows.map((c, idx) => {
+    const line = commandFromFlag(program, c.flag);
+    const checked = draftSet.has(line) ? 'checked' : '';
+    const key = c.id != null ? `man-${c.id}` : `man-brace-${idx}-${c.flag}`;
+    return `
+              <tr>
+                <td class="col-check"><input type="checkbox" data-action="check-script" data-cmd="${esc(line)}" ${checked} title="${esc(uk.actionScript)}"/></td>
+                <td class="flag"><code>${esc(c.flag)}</code></td>
+                <td>${esc(c.description)}</td>
+                <td class="actions">${actionButtons(line, key)}</td>
+              </tr>`;
+  }).join('');
+
+  let hint = '';
+  if (opts.sourceEmpty && !opts.filterActive) {
+    hint = `<tr><td colspan="4" class="muted">${esc(uk.wikiNoFlags)}</td></tr>`;
+  } else if (opts.filterActive && flagRows.length === 0) {
+    hint = `<tr><td colspan="4" class="muted">${esc(uk.wikiFilterEmpty || uk.wikiNoFlags)}</td></tr>`;
+  }
+
+  return `${bareRow}${flagHtml}${hint}`;
 }
 
 /**

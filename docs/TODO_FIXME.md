@@ -76,6 +76,7 @@
 | SS-41 | Навігатор: «Статус»/«Короткий опис» стискають NAME; опис дублює wiki | **done** — лише Обране+Назва; lead-опис у wiki (Favorites перед man) |
 | SS-42 | Змішаний chrome кнопок (gold Save vs dark Copy/toolbar) | **done** — один `btn-primary`; kill `btn-accent`; toolbar override не глушить primary/danger |
 | SS-43 | Section / letter `<select>` білі на темному UI | **done** — `color-scheme: dark`; `appearance: none` + `--bg-elev` / `--ink`; option tokens |
+| SS-44 | Без man-прапорців неможливо + Script | **done** — завжди рядок «Базова команда» (checkbox/Copy/Run/+ Script) над flags |
 
 ## Відомі обмеження Core / Wiki / Builder
 
