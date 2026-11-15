@@ -58,6 +58,7 @@
 | FIX-SS-36a | Toolbar densify (≤2 смуги) | dual-row CSS areas; compact alphabet; thin progress |
 | FIX-SS-36d | Без subtitle; літера = select | brand name only; letter dropdown replaces A–Z strip |
 | FIX-SS-36b | UpdateIndex names-first | names batch + background EnrichMetadata (D13.9) |
+| FIX-SS-40 | List paint before enrich; toolbar composition | WAL/readers; queueEnrich after reloadList; segmented modes |
 
 ## Backlog (після v0.1 / відкладено)
 

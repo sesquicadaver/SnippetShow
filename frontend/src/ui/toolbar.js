@@ -43,7 +43,8 @@ export function shouldSyncSearchValue(inputFocused, currentValue, nextQuery) {
 /**
  * Builds / updates the Wiki toolbar: mode radios, search, letter select, update controls.
  * First call mounts DOM; later calls patch in place so the search input keeps focus (SS-30).
- * Brand shows product name only (no subtitle). Alphabet is a compact `<select>` (SS-36d).
+ * Brand = SnippetShow only (no subtitle). Letter filter = compact `<select>` (SS-36d).
+ * SS-40 restores a single coherent composition (segmented modes, no wrap sprawl).
  * @param {HTMLElement} host
  * @param {{
  *   mode: string,

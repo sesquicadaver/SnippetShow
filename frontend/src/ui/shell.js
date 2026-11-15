@@ -9,12 +9,16 @@ import { renderBuilder } from './builder.js';
 export const SEARCH_DEBOUNCE_MS = 280;
 
 /**
- * SS-30: blank the navigator only when there is nothing useful to keep on screen.
+ * SS-30 / SS-40: blank the navigator only when there is nothing useful to keep on screen.
  * Soft-refresh keeps the previous list visible during search refetch.
+ * After a names-pass, callers pass keepVisible so ListPrograms cannot trap the UI
+ * on «Завантаження списку…» while enrich holds the DB writer.
  * @param {number} programCount
+ * @param {{keepVisible?: boolean}} [opts]
  * @returns {boolean}
  */
-export function shouldShowListLoading(programCount) {
+export function shouldShowListLoading(programCount, opts = {}) {
+  if (opts.keepVisible) return false;
   return !(programCount > 0);
 }
 
@@ -83,6 +87,7 @@ class WikiApp {
     this.savedScriptId = 0;
     this._searchTimer = null;
     this._enrichReloadTimer = null;
+    this._enrichRunning = false;
     this._unsubProgress = null;
     this._reqList = 0;
     this._reqDetail = 0;
@@ -93,16 +98,7 @@ class WikiApp {
     this._unsubProgress = onIndexProgress((p) => {
       this.progress = p || null;
       if (p?.message) this.status = p.message;
-      // Soft busy only for names-pass (UpdateIndex); enrich is background (SS-36b).
-      if (p?.phase === 'enrich' && !this.busy) {
-        this.progress = p;
-      }
       this.paintToolbar();
-      // After background enrich finishes, refresh Section / «Без man» filters.
-      if (p?.phase === 'done' && !this.busy) {
-        clearTimeout(this._enrichReloadTimer);
-        this._enrichReloadTimer = setTimeout(() => this.reloadList(), 120);
-      }
     });
     this.paintAll();
     this.refreshDraft();
@@ -116,18 +112,22 @@ class WikiApp {
       this.paintToolbar();
       return;
     }
-    // Soft paint (SS-36b): do not lock the whole toolbar as «Оновлення…» on EnsureIndexed.
+    // Soft paint: never set toolbar busy during EnsureIndexed (SS-36b / SS-40).
     this.listLoading = shouldShowListLoading(this.programs?.length || 0);
     this.status = uk.statusLoadingList;
     this.paintToolbar();
     this.paintNavigator();
+    let added = 0;
     try {
-      await AppAPI.EnsureIndexed();
+      const res = await AppAPI.EnsureIndexed();
+      added = res?.added || 0;
     } catch (err) {
       console.error(err);
       this.status = `${uk.statusError}: ${err?.message || err}`;
     }
-    await this.reloadList();
+    // Names are in DB — paint list before Section enrich (SS-40).
+    await this.reloadList({ keepVisible: added > 0 });
+    if (added > 0) this.queueEnrich();
   }
 
   paintAll() {
@@ -309,11 +309,14 @@ class WikiApp {
     }
   }
 
-  async reloadList() {
+  /**
+   * @param {{keepVisible?: boolean}} [opts]
+   */
+  async reloadList(opts = {}) {
     if (!hasWails()) return;
     const req = ++this._reqList;
-    // SS-30: soft-refresh — keep previous rows visible while FTS runs.
-    this.listLoading = shouldShowListLoading(this.programs?.length || 0);
+    // SS-30 / SS-40: soft-refresh — keep previous rows (or skip overlay after names-pass).
+    this.listLoading = shouldShowListLoading(this.programs?.length || 0, opts);
     if (this.listLoading) this.paintNavigator();
     try {
       const rows = await AppAPI.ListPrograms(this.listQuery());
@@ -330,6 +333,34 @@ class WikiApp {
     this.paintToolbar();
     this.paintNavigator();
     this.refreshCategories();
+  }
+
+  /**
+   * SS-40: Section enrich only after names are painted — never race ListPrograms.
+   */
+  queueEnrich() {
+    if (!hasWails() || this._enrichRunning || this.busy) return;
+    this._enrichRunning = true;
+    const run = async () => {
+      this.status = uk.statusEnriching || 'Збагачення метаданих…';
+      this.paintToolbar();
+      try {
+        await AppAPI.EnrichMetadata();
+      } catch (err) {
+        console.error(err);
+        const msg = err?.message || String(err);
+        if (!/вже виконується|скасов/i.test(msg)) {
+          this.status = `${uk.statusError}: ${msg}`;
+          this.paintToolbar();
+        }
+      }
+      this._enrichRunning = false;
+      this.progress = null;
+      await this.reloadList({ keepVisible: true });
+    };
+    // Defer so the current call stack can finish painting first.
+    clearTimeout(this._enrichReloadTimer);
+    this._enrichReloadTimer = setTimeout(run, 0);
   }
 
   async selectProgram(name) {
@@ -772,10 +803,12 @@ class WikiApp {
     this.progress = { done: 0, total: 1 };
     this.status = uk.updating;
     this.paintToolbar();
+    let ok = false;
     try {
       const res = await AppAPI.UpdateIndex();
       const n = (res?.added || 0) + (res?.updated || 0) + (res?.markedGone || 0);
       this.status = fmt(uk.statusUpdated, { n });
+      ok = true;
     } catch (err) {
       console.error(err);
       const msg = err?.message || String(err);
@@ -784,7 +817,9 @@ class WikiApp {
     this.busy = false;
     this.progress = null;
     this.paintToolbar();
-    await this.reloadList();
+    // Paint PATH names immediately; enrich only after list returns (SS-40).
+    await this.reloadList({ keepVisible: true });
+    if (ok) this.queueEnrich();
   }
 
   async runCatalog() {
