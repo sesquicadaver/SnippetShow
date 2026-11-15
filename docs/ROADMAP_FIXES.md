@@ -55,6 +55,7 @@
 | FIX-SS-32 | Імплементація Обрані / man-gate | schema v3; names-only scan; SetFavorite+purge; Section enrich; UI |
 | FIX-SS-34 | Явний «Обрати» у навігаторі (не лише ★) | labeled checkbox + col «Обране»; `shouldShowFavoriteControl` |
 | FIX-SS-35 | Артефакти збірки не в git | untrack wailsjs + md5; ignore AppImage/coverage/.wails |
+| FIX-SS-36a | Toolbar densify (≤2 смуги) | dual-row CSS areas; compact alphabet; thin progress |
 
 ## Backlog (після v0.1 / відкладено)
 
