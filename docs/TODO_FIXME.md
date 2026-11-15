@@ -1,6 +1,6 @@
 # TODO / FIXME — виявлені заглушки та дефекти
 
-Правило anti-stub: заглушки дозволені лише як тимчасові Phase-маркери з записом тут. У release path MVP їх не лишати.
+Правило anti-stub: заглушки дозволені лише як тимчасові Phase-маркери з записом тут. У release path MVP їх не лишати. Канон вимог: [`DECISIONS.md`](DECISIONS.md) + [`LIVING_SPEC.md`](LIVING_SPEC.md) (`TOR_base.md` знято, SS-53).
 
 ## Закрито у Phase 1
 
@@ -81,6 +81,7 @@
 | SS-46 | Custom toolbar selects не відкриваються | **done** — `.toolbar` overflow:visible; pointerdown toggle; skip patch while open |
 | SS-47 | Letter/Section menu click-through → programs list | **done** — `.toolbar` z-index above `.app-body`; option pointerdown + eatNextClick |
 | SS-52 | Section filter лише «Усі секції» на warm DB | **done** — bootstrap `queueEnrich` коли categories порожні (не лише `added > 0`) |
+| SS-53 | Docs refresh: зняти `TOR_base.md`, переписати README, гігієна гілок | **done** — канон: DECISIONS / LIVING_SPEC / ROADMAP / TODO / NFR |
 
 ## Відомі обмеження Core / Wiki / Builder
 

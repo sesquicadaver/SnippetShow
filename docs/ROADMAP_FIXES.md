@@ -1,12 +1,12 @@
 # Черга виправлень / post-MVP
 
-Канонічна черга після MVP. Рішення v0.1 (D9–D12) — у `docs/DECISIONS.md`.
+Канонічна черга після MVP. Рішення — у [`DECISIONS.md`](DECISIONS.md) (D1–D13). Living Spec — [`LIVING_SPEC.md`](LIVING_SPEC.md). Початкове `TOR_base.md` знято (SS-53).
 
 ## OPEN
 
 | ID | Тема | Нотатка |
 |----|------|---------|
-| *(черга порожня)* | — | наступне — backlog / post-v0.1 |
+| *(черга порожня)* | — | наступне — backlog / post-v0.1; docs hygiene SS-53 |
 
 Порядок Autopilot: зверху вниз у таблиці OPEN.
 
@@ -67,6 +67,7 @@
 | FIX-SS-46 | Toolbar custom selects do not open | `.toolbar` overflow:visible (was clipping menus); pointerdown toggle |
 | FIX-SS-47 | Letter/Section menu click-through | `.toolbar` z-index:30 (stack above `.app-body`); option pointerdown + eatNextClick |
 | FIX-SS-52 | Bootstrap enrich when categories empty | warm names-only DB: queue EnrichMetadata not only on `added > 0` |
+| FIX-SS-53 | Docs refresh + branch hygiene | remove `TOR_base.md`; rewrite README; prune stale remote branches; keep D1–D13 |
 
 ## Backlog (після v0.1 / відкладено)
 

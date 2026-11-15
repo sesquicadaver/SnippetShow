@@ -42,11 +42,11 @@ Ubuntu 24.04+: збірка з tag `webkit2_41` через `./build/build.sh`.
 6. [x] Script Builder: + Script → reorder → Export `.sh` — діалог «Експорт скрипту (.sh)» / «Зберегти в БД» відкриваються
 7. [x] JSON Export / Import — діалоги «Експорт/Імпорт JSON-бекапу» відкриваються (ідемпотентність Import покрита unit `backup_test`)
 
-**Вердикт:** Ubuntu checklist **checked** для v0.1. Деталі NFR — `docs/NFR_NOTES.md`. Звіт агента (store): `internal/ubuntu-smoke-test.md` / `docs/ubuntu-dist-smoke-m9.md`.
+**Вердикт:** Ubuntu checklist **checked** для v0.1. Деталі NFR — [`docs/NFR_NOTES.md`](../docs/NFR_NOTES.md).
 
-## Каталог «Всі програми»
+## Каталог «Пакети»
 
-- Джерело: apt cache / dpkg metadata через scanner
+- Джерело: apt cache / dpkg metadata через scanner → таблиця `packages` (D10 / SS-29)
 - Порожній кеш: `sudo apt update` (D5)
 
 ## Відомі обмеження
