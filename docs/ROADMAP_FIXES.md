@@ -61,6 +61,7 @@
 | FIX-SS-40 | List paint before enrich; toolbar composition | WAL/readers; queueEnrich after reloadList; segmented modes |
 | FIX-SS-41 | Nav columns: drop Status/Summary; wiki lead desc | name-first list; Favorites description above man |
 | FIX-SS-42 | Unify button primary chrome (variant B) | one `btn-primary` gold; kill `btn-accent`; `.toolbar .btn.btn-primary` wins |
+| FIX-SS-43 | Dark chrome for Section / letter selects | `color-scheme: dark`; appearance:none; match search/btn tokens |
 
 ## Backlog (після v0.1 / відкладено)
 

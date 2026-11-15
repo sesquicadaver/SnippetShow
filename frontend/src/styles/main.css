@@ -25,6 +25,8 @@
 html, body {
   margin: 0;
   height: 100%;
+  /* SS-43: native <select>/form controls follow dark app chrome (WebKit/GTK). */
+  color-scheme: dark;
   background:
     radial-gradient(900px 480px at 0% 0%, rgba(196, 163, 90, 0.14), transparent 55%),
     radial-gradient(700px 420px at 100% 100%, rgba(111, 159, 106, 0.12), transparent 50%),
@@ -142,7 +144,7 @@ html, body {
   max-width: 24rem;
 }
 
-/* Shared chrome for search / selects / buttons in the toolbar (SS-40). */
+/* Shared chrome for search / selects / buttons in the toolbar (SS-40 / SS-43). */
 .toolbar .search-input,
 .toolbar-filters .category-select,
 .toolbar-filters .letter-select,
@@ -152,12 +154,13 @@ html, body {
   margin: 0;
   border: 1px solid var(--line);
   border-radius: 0;
-  background: var(--bg-elev);
+  /* background-color (not shorthand) so select chevron background-image survives. */
+  background-color: var(--bg-elev);
   color: var(--ink);
   font: inherit;
   font-size: 0.8rem;
   line-height: 1.2;
-  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
 }
 
 .toolbar .search-input,
@@ -174,6 +177,32 @@ html, body {
 .toolbar-filters .letter-select {
   max-width: 5.25rem;
   min-width: 4.5rem;
+}
+
+/*
+ * SS-43: WebKit/GTK paints native <select> with a bright system face even when
+ * background/color are set. Match search/button chrome via appearance:none +
+ * solid bg + custom chevron; keep option list on dark tokens.
+ */
+.toolbar-filters .category-select,
+.toolbar-filters .letter-select {
+  -webkit-appearance: none;
+  appearance: none;
+  color-scheme: dark;
+  background-color: var(--bg-elev);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%239aab96' d='M1 1.5L6 6.5L11 1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.45rem center;
+  background-size: 0.7rem 0.45rem;
+  padding-right: 1.45rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.toolbar-filters .category-select option,
+.toolbar-filters .letter-select option {
+  background-color: var(--bg-elev);
+  color: var(--ink);
 }
 
 .toolbar .search-input:focus,
