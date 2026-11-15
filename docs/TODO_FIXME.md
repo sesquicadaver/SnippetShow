@@ -68,6 +68,7 @@
 | SS-32 | Імплементація Обрані / man-gate / Section / «Без man» | **done** — schema v3; names-only FirstRun; SetFavorite; bulk enrich; UI режими+фільтри |
 | SS-33 | Відсутній чекбокс «Обрати» після #28 | **done** (розслідування) — був лише ★; див. store `favorites-checkbox-missing.md` |
 | SS-34 | Явний контроль «Обрати» / «В обраному» у списку | **done** — checkbox+підпис + колонка «Обране»; SetFavorite без змін |
+| SS-35 | Артефакти збірки в git | **done** — untrack `frontend/wailsjs/`, `package.json.md5`; посилено `.gitignore` |
 
 ## Відомі обмеження Core / Wiki / Builder
 

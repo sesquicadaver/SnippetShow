@@ -129,13 +129,6 @@ func writeExec(t *testing.T, dir, name string) {
 	}
 }
 
-func dpkgOuts(binPath, pkg, version, summary string) map[string]string {
-	return map[string]string{
-		"dpkg-query -S " + binPath: pkg + ":amd64: " + binPath,
-		"dpkg-query -W -f=${Package}\t${Version}\t${binary:Package}\t${Description}\n " + pkg: pkg + "\t" + version + "\t" + pkg + "\t" + summary + "\n",
-	}
-}
-
 func TestNewEnablesParseOnUpdate(t *testing.T) {
 	u := New(openStore(t))
 	if !u.ParseOnUpdate {
