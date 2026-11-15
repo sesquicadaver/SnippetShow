@@ -74,6 +74,7 @@
 | SS-36b | UpdateIndex names-first + enrich у фоні | **done** — batch upsert імен; EnrichMetadata background; soft bootstrap |
 | SS-40 | Список порожній / Loading під час індексу; toolbar sprawl | **done** — list paint before enrich; WAL reads; toolbar composition |
 | SS-41 | Навігатор: «Статус»/«Короткий опис» стискають NAME; опис дублює wiki | **done** — лише Обране+Назва; lead-опис у wiki (Favorites перед man) |
+| SS-42 | Змішаний chrome кнопок (gold Save vs dark Copy/toolbar) | **done** — один `btn-primary`; kill `btn-accent`; toolbar override не глушить primary/danger |
 
 ## Відомі обмеження Core / Wiki / Builder
 

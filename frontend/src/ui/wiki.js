@@ -177,7 +177,7 @@ function renderSnippetsBlock(detail, state) {
     <aside class="snippets-panel">
       <header class="snippets-header">
         <h3>${esc(uk.snippetsTitle)}</h3>
-        <button type="button" class="btn btn-accent" data-action="snippet-add">${esc(uk.snippetAdd)}</button>
+        <button type="button" class="btn btn-primary" data-action="snippet-add">${esc(uk.snippetAdd)}</button>
       </header>
       ${form.open ? renderSnippetForm(form) : ''}
       <div class="man-table-wrap snippets-table-wrap">
@@ -228,7 +228,7 @@ function renderSnippetForm(form) {
       </label>
       ${form.error ? `<p class="form-error">${esc(form.error)}</p>` : ''}
       <div class="form-actions">
-        <button type="submit" class="btn btn-accent">${esc(uk.snippetSave)}</button>
+        <button type="submit" class="btn btn-primary">${esc(uk.snippetSave)}</button>
         <button type="button" class="btn" data-action="snippet-cancel">${esc(uk.snippetCancel)}</button>
       </div>
     </form>

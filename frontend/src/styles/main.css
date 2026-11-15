@@ -276,6 +276,30 @@ html, body {
   font-weight: 600;
 }
 
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.05);
+  border-color: transparent;
+}
+
+/* SS-42 / B: toolbar shared chrome must not mute primary/danger. */
+.toolbar .btn.btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: transparent;
+  font-weight: 600;
+}
+
+.toolbar .btn.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.05);
+  border-color: transparent;
+}
+
+.toolbar .btn.btn-danger {
+  border-color: rgba(184, 137, 74, 0.55);
+  color: #f0c48a;
+  background: var(--bg-elev);
+}
+
 .toolbar-status {
   display: flex;
   align-items: center;
@@ -621,14 +645,6 @@ html, body {
   padding: 0.2rem 0.45rem;
   font-size: 0.75rem;
 }
-
-.btn-accent {
-  background: var(--accent);
-  color: var(--accent-ink);
-  border-color: transparent;
-}
-
-.btn-accent:hover { filter: brightness(1.05); }
 
 .btn-danger {
   border-color: rgba(184, 137, 74, 0.55);
